@@ -14,11 +14,18 @@ import {
   TestEvent,
   TestSuiteInfo,
   TestInfo,
+  RetireEvent,
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
-import { loadCmakeTests, runCmakeTest } from './cmake-runner';
+import { CmakeTestProcess } from './interfaces/cmake-test-process';
+import {
+  loadCmakeTests,
+  scheduleCmakeTest,
+  executeCmakeTest,
+  cancelCmakeTest,
+} from './cmake-runner';
 
 /** Special ID value for the root suite */
 const ROOT_SUITE_ID = '*';
@@ -32,6 +39,12 @@ export class CmakeAdapter implements TestAdapter {
   /** Discovered CMake tests */
   private cmakeTests: CmakeTestInfo[] = [];
 
+  /** State */
+  private state: 'idle' | 'loading' | 'running' | 'cancelled' = 'idle';
+
+  /** Currently running test */
+  private currentTest?: CmakeTestProcess;
+
   //
   // TestAdapter implementations
   //
@@ -42,6 +55,7 @@ export class CmakeAdapter implements TestAdapter {
   private readonly testStatesEmitter = new vscode.EventEmitter<
     TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent
   >();
+  private readonly retireEmitter = new vscode.EventEmitter<RetireEvent>();
   private readonly autorunEmitter = new vscode.EventEmitter<void>();
 
   get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -51,6 +65,9 @@ export class CmakeAdapter implements TestAdapter {
     TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent
   > {
     return this.testStatesEmitter.event;
+  }
+  get retire(): vscode.Event<RetireEvent> | undefined {
+    return this.retireEmitter.event;
   }
   get autorun(): vscode.Event<void> | undefined {
     return this.autorunEmitter.event;
@@ -67,14 +84,13 @@ export class CmakeAdapter implements TestAdapter {
     this.disposables.push(this.autorunEmitter);
   }
 
-  private isLoading = false;
   async load(): Promise<void> {
-    if (this.isLoading) return; // it is safe to ignore a call to `load()`, even if it comes directly from the Test Explorer
+    if (this.state !== 'idle') return; // it is safe to ignore a call to `load()`, even if it comes directly from the Test Explorer
 
+    this.state = 'loading';
     this.log.info('Loading CMake tests');
     this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
 
-    this.isLoading = true;
     try {
       const buildDir =
         vscode.workspace
@@ -109,20 +125,20 @@ export class CmakeAdapter implements TestAdapter {
         errorMessage: e.toString(),
       });
     }
-    this.isLoading = false;
+
+    this.state = 'idle';
   }
 
-  private isRunning = false;
   async run(tests: string[]): Promise<void> {
-    if (this.isRunning) return; // it is safe to ignore a call to `run()`
+    if (this.state !== 'idle') return; // it is safe to ignore a call to `run()`
 
+    this.state = 'running';
     this.log.info(`Running CMake tests ${JSON.stringify(tests)}`);
     this.testStatesEmitter.fire(<TestRunStartedEvent>{
       type: 'started',
       tests,
     });
 
-    this.isRunning = true;
     try {
       for (const id of tests) {
         await this.runTest(id);
@@ -130,9 +146,9 @@ export class CmakeAdapter implements TestAdapter {
     } catch (e) {
       // Fail silently
     }
-    this.isRunning = false;
 
     this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
+    this.state = 'idle';
   }
 
   /*	implement this method if your TestAdapter supports debugging tests
@@ -142,8 +158,12 @@ export class CmakeAdapter implements TestAdapter {
 */
 
   cancel(): void {
-    // in a "real" TestAdapter this would kill the child process for the current test run (if there is any)
-    throw new Error('Method not implemented.');
+    if (this.state !== 'running') return; // ignore
+
+    if (this.currentTest) cancelCmakeTest(this.currentTest);
+
+    // State will eventually transition to idle once the run loop completes
+    this.state = 'cancelled';
   }
 
   dispose(): void {
@@ -160,6 +180,12 @@ export class CmakeAdapter implements TestAdapter {
    * @param id Test or suite ID
    */
   private async runTest(id: string) {
+    if (this.state === 'cancelled') {
+      // Test run cancelled, retire test
+      this.retireEmitter.fire(<RetireEvent>{ tests: [id] });
+      return;
+    }
+
     if (id === ROOT_SUITE_ID) {
       // Run the whole test suite
       this.testStatesEmitter.fire(<TestSuiteEvent>{
@@ -201,7 +227,8 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      const result: CmakeTestResult = await runCmakeTest(test);
+      this.currentTest = scheduleCmakeTest(test);
+      const result: CmakeTestResult = await executeCmakeTest(this.currentTest);
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',
         test: id,
@@ -215,6 +242,8 @@ export class CmakeAdapter implements TestAdapter {
         state: 'errored',
         message: e.toString(),
       });
+    } finally {
+      this.currentTest = undefined;
     }
   }
 }

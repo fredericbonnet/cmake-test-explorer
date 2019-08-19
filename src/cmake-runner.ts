@@ -5,6 +5,7 @@
 import * as child_process from 'child_process';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
+import { CmakeTestProcess } from './interfaces/cmake-test-process';
 
 /**
  * Load CMake test list
@@ -49,24 +50,35 @@ export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
 }
 
 /**
- * Run a single CMake test
+ * Schedule a single CMake test
  *
  * @param test Test to run
  */
-export function runCmakeTest(test: CmakeTestInfo): Promise<CmakeTestResult> {
+export function scheduleCmakeTest(test: CmakeTestInfo): CmakeTestProcess {
+  const [command, ...args] = test.command;
+  const WORKING_DIRECTORY = test.properties.find(
+    p => p.name === 'WORKING_DIRECTORY'
+  );
+  const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
+  const testProcess = child_process.spawn(command, args, { cwd });
+  if (!testProcess.pid) {
+    // Something failed, e.g. the executable or cwd doesn't exist
+    throw new Error(`Cannot spawn test command ${command}`);
+  }
+
+  return testProcess;
+}
+
+/**
+ * Execute a previously scheduled CMake test
+ *
+ * @param testProcess Scheduled test process
+ */
+export function executeCmakeTest(
+  testProcess: CmakeTestProcess
+): Promise<CmakeTestResult> {
   return new Promise<CmakeTestResult>((resolve, reject) => {
     try {
-      const [command, ...args] = test.command;
-      const WORKING_DIRECTORY = test.properties.find(
-        p => p.name === 'WORKING_DIRECTORY'
-      );
-      const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
-      const testProcess = child_process.spawn(command, args, { cwd });
-      if (!testProcess.pid) {
-        // Something failed, e.g. the executable or cwd doesn't exist
-        throw new Error(`Cannot spawn test command ${command}`);
-      }
-
       // Capture result on stdout
       const out: string[] = [];
       testProcess.stdout.on('data', data => {
@@ -86,4 +98,23 @@ export function runCmakeTest(test: CmakeTestInfo): Promise<CmakeTestResult> {
       reject(e);
     }
   });
+}
+
+/**
+ * Cancel a previously scheduled CMake test
+ *
+ * @param testProcess Scheduled test process
+ */
+export function cancelCmakeTest(testProcess: CmakeTestProcess) {
+  testProcess.kill();
+}
+
+/**
+ * Run a single CMake test
+ *
+ * @param test Test to run
+ */
+export function runCmakeTest(test: CmakeTestInfo): Promise<CmakeTestResult> {
+  const testProcess = scheduleCmakeTest(test);
+  return executeCmakeTest(testProcess);
 }
