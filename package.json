@@ -1,19 +1,19 @@
 {
-  "name": "vscode-example-test-adapter",
-  "displayName": "Example Test Explorer",
-  "description": "Run your Example tests in the Sidebar of Visual Studio Code",
+  "name": "cmake-test-adapter",
+  "displayName": "CMake Test Explorer",
+  "description": "Run your CMake tests in the Sidebar of Visual Studio Code",
   "icon": "img/icon.png",
-  "author": "Holger Benl <hbenl@evandor.de>",
-  "publisher": "hbenl",
+  "author": "Frédéric Bonnet <fredericbonnet@free.fr>",
+  "publisher": "fredericbonnet",
   "version": "0.0.1",
   "license": "MIT",
-  "homepage": "https://github.com/hbenl/vscode-example-test-adapter",
+  "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hbenl/vscode-example-test-adapter.git"
+    "url": "https://github.com/fredericbonnet/cmake-test-explorer.git"
   },
   "bugs": {
-    "url": "https://github.com/hbenl/vscode-example-test-adapter/issues"
+    "url": "https://github.com/fredericbonnet/cmake-test-explorer/issues"
   },
   "categories": [
     "Other"
@@ -53,15 +53,20 @@
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Example Test Explorer configuration",
+      "title": "CMake Test Explorer",
       "properties": {
-        "exampleExplorer.logpanel": {
-          "description": "write diagnotic logs to an output panel",
+        "cmakeExplorer.buildDir": {
+          "description": "The CMake build directory (relative to the workspace folder)",
+          "type": "string",
+          "scope": "resource"
+        },
+        "cmakeExplorer.logpanel": {
+          "description": "Write diagnotic logs to an output panel",
           "type": "boolean",
           "scope": "resource"
         },
-        "exampleExplorer.logfile": {
-          "description": "write diagnostic logs to the given file",
+        "cmakeExplorer.logfile": {
+          "description": "Write diagnostic logs to the given file",
           "type": "string",
           "scope": "resource"
         }
