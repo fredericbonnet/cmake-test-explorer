@@ -25,6 +25,7 @@ import {
   scheduleCmakeTest,
   executeCmakeTest,
   cancelCmakeTest,
+  CacheNotFoundError,
 } from './cmake-runner';
 
 /** Special ID value for the root suite */
@@ -91,8 +92,9 @@ export class CmakeAdapter implements TestAdapter {
     this.log.info('Loading CMake tests');
     this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
 
+    let buildDir;
     try {
-      const buildDir =
+      buildDir =
         vscode.workspace
           .getConfiguration('cmakeExplorer', this.workspaceFolder.uri)
           .get<string>('buildDir') || '';
@@ -120,10 +122,18 @@ export class CmakeAdapter implements TestAdapter {
         suite,
       });
     } catch (e) {
-      this.testsEmitter.fire(<TestLoadFinishedEvent>{
-        type: 'finished',
-        errorMessage: e.toString(),
-      });
+      if (e instanceof CacheNotFoundError && buildDir === '') {
+        // Ignore error when using default config
+        this.testsEmitter.fire(<TestLoadFinishedEvent>{
+          type: 'finished',
+        });
+      } else {
+        // Report error
+        this.testsEmitter.fire(<TestLoadFinishedEvent>{
+          type: 'finished',
+          errorMessage: e.toString(),
+        });
+      }
     }
 
     this.state = 'idle';

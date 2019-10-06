@@ -4,9 +4,27 @@
 
 import * as child_process from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
+
+/** Name of CMake cache file in build dir */
+const CMAKE_CACHE_FILE = 'CMakeCache.txt';
+
+/** Regexp for CTest path in CMake cache file */
+const CTEST_RE = /^CMAKE_CTEST_COMMAND:INTERNAL=(.*)$/m;
+
+/** Error thrown when CMake cache file is not found in build dir */
+export class CacheNotFoundError extends Error {
+  /** @see https://github.com/microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work */
+  constructor(m: string) {
+    super(m);
+
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, CacheNotFoundError.prototype);
+  }
+}
 
 /**
  * Load CMake test list
@@ -22,15 +40,35 @@ export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
         throw new Error(`Directory '${cwd}' does not exist`);
       }
 
-      // Execute the `ctest --show-only=json-v1` command to get the test list in JSON format
+      // Check that CMakeCache.txt file exists in cwd
+      const cacheFilePath = path.join(cwd, CMAKE_CACHE_FILE);
+      if (!fs.existsSync(cacheFilePath)) {
+        throw new CacheNotFoundError(
+          `CMake cache file ${cacheFilePath} does not exist`
+        );
+      }
+
+      // Extract CTest path from cache file.
+      const match = fs
+        .readFileSync(cacheFilePath)
+        .toString()
+        .match(CTEST_RE);
+      if (!match) {
+        throw new Error(
+          `CTest path not found in CMake cache file ${cacheFilePath}`
+        );
+      }
+      const ctestPath = match[1];
+
+      // Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
       const ctestProcess = child_process.spawn(
-        'ctest',
+        ctestPath,
         ['--show-only=json-v1'],
         { cwd }
       );
       if (!ctestProcess.pid) {
         // Something failed, e.g. the executable or cwd doesn't exist
-        throw new Error(`Cannot spaw command 'ctest'`);
+        throw new Error(`Cannot spaw command '${ctestPath}'`);
       }
 
       // Capture result on stdout
