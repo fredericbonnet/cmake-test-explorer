@@ -3,6 +3,7 @@
  */
 
 import * as child_process from 'child_process';
+import * as fs from 'fs';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
@@ -15,6 +16,12 @@ import { CmakeTestProcess } from './interfaces/cmake-test-process';
 export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
   return new Promise<CmakeTestInfo[]>((resolve, reject) => {
     try {
+      // Check that cwd directory exists
+      // Note: statSync will throw an error if path doesn't exist
+      if (!fs.statSync(cwd).isDirectory()) {
+        throw new Error(`Directory '${cwd}' does not exist`);
+      }
+
       // Execute the `ctest --show-only=json-v1` command to get the test list in JSON format
       const ctestProcess = child_process.spawn(
         'ctest',

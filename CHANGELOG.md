@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Check that buildDir exists before loading tests
+
 ## [0.1.0] - 2019-08-19
 
 ### Added
