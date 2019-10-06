@@ -84,8 +84,12 @@ export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
           const data = JSON.parse(out.join(''));
           const tests: CmakeTestInfo[] = data.tests;
           resolve(tests);
-        } catch (e) {
-          reject(e);
+        } catch {
+          reject(
+            new Error(
+              `Error parsing test list - Make sure to use a version of CTest >= 3.14 that supports option '--show-only=json-v1'`
+            )
+          );
         }
       });
     } catch (e) {
