@@ -58,6 +58,13 @@
         "cmakeExplorer.buildDir": {
           "description": "The CMake build directory (relative to the workspace folder)",
           "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.buildConfig": {
+          "description": "The CMake build configuration (empty for any)",
+          "type": "string",
+          "default": "",
           "scope": "resource"
         },
         "cmakeExplorer.logpanel": {

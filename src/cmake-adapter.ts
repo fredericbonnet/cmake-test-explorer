@@ -94,12 +94,14 @@ export class CmakeAdapter implements TestAdapter {
 
     let buildDir;
     try {
-      buildDir =
-        vscode.workspace
-          .getConfiguration('cmakeExplorer', this.workspaceFolder.uri)
-          .get<string>('buildDir') || '';
+      const config = vscode.workspace.getConfiguration(
+        'cmakeExplorer',
+        this.workspaceFolder.uri
+      );
+      buildDir = config.get<string>('buildDir') || '';
+      const buildConfig = config.get<string>('buildConfig') || '';
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.cmakeTests = await loadCmakeTests(dir);
+      this.cmakeTests = await loadCmakeTests(dir, buildConfig);
 
       const suite: TestSuiteInfo = {
         type: 'suite',

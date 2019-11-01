@@ -30,8 +30,12 @@ export class CacheNotFoundError extends Error {
  * Load CMake test list
  *
  * @param cwd CMake build directory to run the command within
+ * @param buildConfig Build configuration (may be empty)
  */
-export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
+export function loadCmakeTests(
+  cwd: string,
+  buildConfig?: string
+): Promise<CmakeTestInfo[]> {
   return new Promise<CmakeTestInfo[]>((resolve, reject) => {
     try {
       // Check that cwd directory exists
@@ -63,7 +67,10 @@ export function loadCmakeTests(cwd: string): Promise<CmakeTestInfo[]> {
       // Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
       const ctestProcess = child_process.spawn(
         ctestPath,
-        ['--show-only=json-v1'],
+        [
+          '--show-only=json-v1',
+          ...(!!buildConfig ? ['--build-config', buildConfig] : []),
+        ],
         { cwd }
       );
       if (!ctestProcess.pid) {
