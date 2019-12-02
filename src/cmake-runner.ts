@@ -29,10 +29,12 @@ export class CacheNotFoundError extends Error {
 /**
  * Load CMake test list
  *
+ * @param ctestPath CTest command path
  * @param cwd CMake build directory to run the command within
  * @param buildConfig Build configuration (may be empty)
  */
 export function loadCmakeTests(
+  ctestPath: string,
   cwd: string,
   buildConfig?: string
 ): Promise<CmakeTestInfo[]> {
@@ -43,26 +45,6 @@ export function loadCmakeTests(
       if (!fs.statSync(cwd).isDirectory()) {
         throw new Error(`Directory '${cwd}' does not exist`);
       }
-
-      // Check that CMakeCache.txt file exists in cwd
-      const cacheFilePath = path.join(cwd, CMAKE_CACHE_FILE);
-      if (!fs.existsSync(cacheFilePath)) {
-        throw new CacheNotFoundError(
-          `CMake cache file ${cacheFilePath} does not exist`
-        );
-      }
-
-      // Extract CTest path from cache file.
-      const match = fs
-        .readFileSync(cacheFilePath)
-        .toString()
-        .match(CTEST_RE);
-      if (!match) {
-        throw new Error(
-          `CTest path not found in CMake cache file ${cacheFilePath}`
-        );
-      }
-      const ctestPath = match[1];
 
       // Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
       const ctestProcess = child_process.spawn(
@@ -108,18 +90,31 @@ export function loadCmakeTests(
 /**
  * Schedule a single CMake test
  *
+ * @param ctestPath CTest command path
  * @param test Test to run
  */
-export function scheduleCmakeTest(test: CmakeTestInfo): CmakeTestProcess {
-  const [command, ...args] = test.command;
+export function scheduleCmakeTest(
+  ctestPath: string,
+  test: CmakeTestInfo
+): CmakeTestProcess {
+  const { name, config } = test;
   const WORKING_DIRECTORY = test.properties.find(
     p => p.name === 'WORKING_DIRECTORY'
   );
   const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
-  const testProcess = child_process.spawn(command, args, { cwd });
+  const testProcess = child_process.spawn(
+    ctestPath,
+    [
+      '-R',
+      `^${name}$`,
+      '--output-on-failure',
+      ...(!!config ? ['-C', config] : []),
+    ],
+    { cwd }
+  );
   if (!testProcess.pid) {
     // Something failed, e.g. the executable or cwd doesn't exist
-    throw new Error(`Cannot spawn test command ${command}`);
+    throw new Error(`Cannot run test ${name}`);
   }
 
   return testProcess;
@@ -168,9 +163,41 @@ export function cancelCmakeTest(testProcess: CmakeTestProcess) {
 /**
  * Run a single CMake test
  *
+ * @param ctestPath CTest command path
  * @param test Test to run
  */
-export function runCmakeTest(test: CmakeTestInfo): Promise<CmakeTestResult> {
-  const testProcess = scheduleCmakeTest(test);
+export function runCmakeTest(
+  ctestPath: string,
+  test: CmakeTestInfo
+): Promise<CmakeTestResult> {
+  const testProcess = scheduleCmakeTest(ctestPath, test);
   return executeCmakeTest(testProcess);
+}
+
+/**
+ * Get CTest command path from CMakeCache.txt
+ *
+ * @param cwd CMake build directory to run the command within
+ */
+export function getCtestPath(cwd: string) {
+  // Check that CMakeCache.txt file exists in cwd
+  const cacheFilePath = path.join(cwd, CMAKE_CACHE_FILE);
+  if (!fs.existsSync(cacheFilePath)) {
+    throw new CacheNotFoundError(
+      `CMake cache file ${cacheFilePath} does not exist`
+    );
+  }
+
+  // Extract CTest path from cache file.
+  const match = fs
+    .readFileSync(cacheFilePath)
+    .toString()
+    .match(CTEST_RE);
+  if (!match) {
+    throw new Error(
+      `CTest path not found in CMake cache file ${cacheFilePath}`
+    );
+  }
+
+  return match[1];
 }

@@ -9,6 +9,7 @@
  */
 export interface CmakeTestInfo {
   name: string;
+  config: string;
   command: string[];
   properties: {
     name: string;

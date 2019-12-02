@@ -26,6 +26,7 @@ import {
   executeCmakeTest,
   cancelCmakeTest,
   CacheNotFoundError,
+  getCtestPath,
 } from './cmake-runner';
 
 /** Special ID value for the root suite */
@@ -36,6 +37,9 @@ const ROOT_SUITE_ID = '*';
  */
 export class CmakeAdapter implements TestAdapter {
   private disposables: { dispose(): void }[] = [];
+
+  /** Discovered CTest command path */
+  private ctestPath: string = '';
 
   /** Discovered CMake tests */
   private cmakeTests: CmakeTestInfo[] = [];
@@ -101,7 +105,8 @@ export class CmakeAdapter implements TestAdapter {
       buildDir = config.get<string>('buildDir') || '';
       const buildConfig = config.get<string>('buildConfig') || '';
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.cmakeTests = await loadCmakeTests(dir, buildConfig);
+      this.ctestPath = getCtestPath(dir);
+      this.cmakeTests = await loadCmakeTests(this.ctestPath, dir, buildConfig);
 
       const suite: TestSuiteInfo = {
         type: 'suite',
@@ -239,7 +244,7 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      this.currentTest = scheduleCmakeTest(test);
+      this.currentTest = scheduleCmakeTest(this.ctestPath, test);
       const result: CmakeTestResult = await executeCmakeTest(this.currentTest);
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',

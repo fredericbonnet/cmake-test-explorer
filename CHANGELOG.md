@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Run tests with CTest instead of executing the test commands directly. This fixes a nunber of issues with CTest options such as `PASS_REGULAR_EXPRESSION`.
+
 ## [0.3.1] - 2019-11-01
 
 ### Changed
