@@ -2,6 +2,7 @@
  * @file CMake test discovery & execution
  */
 
+import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -188,6 +189,26 @@ export function runCmakeTest(
 ): Promise<CmakeTestResult> {
   const testProcess = scheduleCmakeTest(ctestPath, test, extraArgs);
   return executeCmakeTest(testProcess);
+}
+
+/**
+ * Get debug configuration for a single CMake test
+ *
+ * @param test Test to debug
+ */
+export function getCmakeTestDebugConfiguration(
+  test: CmakeTestInfo
+): Partial<vscode.DebugConfiguration> {
+  const [command, ...args] = test.command;
+  const WORKING_DIRECTORY = test.properties.find(
+    p => p.name === 'WORKING_DIRECTORY'
+  );
+  const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
+  return {
+    program: command,
+    args,
+    cwd,
+  };
 }
 
 /**
