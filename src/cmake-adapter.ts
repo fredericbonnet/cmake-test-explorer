@@ -104,9 +104,15 @@ export class CmakeAdapter implements TestAdapter {
       );
       buildDir = config.get<string>('buildDir') || '';
       const buildConfig = config.get<string>('buildConfig') || '';
+      const extraCtestLoadArgs = config.get<string>('extraCtestLoadArgs') || '';
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
       this.ctestPath = getCtestPath(dir);
-      this.cmakeTests = await loadCmakeTests(this.ctestPath, dir, buildConfig);
+      this.cmakeTests = await loadCmakeTests(
+        this.ctestPath,
+        dir,
+        buildConfig,
+        extraCtestLoadArgs
+      );
 
       const suite: TestSuiteInfo = {
         type: 'suite',
@@ -244,7 +250,16 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      this.currentTest = scheduleCmakeTest(this.ctestPath, test);
+      const config = vscode.workspace.getConfiguration(
+        'cmakeExplorer',
+        this.workspaceFolder.uri
+      );
+      const extraCtestRunArgs = config.get<string>('extraCtestRunArgs') || '';
+      this.currentTest = scheduleCmakeTest(
+        this.ctestPath,
+        test,
+        extraCtestRunArgs
+      );
       const result: CmakeTestResult = await executeCmakeTest(this.currentTest);
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',

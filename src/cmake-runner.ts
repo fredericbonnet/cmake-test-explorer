@@ -9,6 +9,8 @@ import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
 
+const { split } = require('split-cmd');
+
 /** Name of CMake cache file in build dir */
 const CMAKE_CACHE_FILE = 'CMakeCache.txt';
 
@@ -32,11 +34,13 @@ export class CacheNotFoundError extends Error {
  * @param ctestPath CTest command path
  * @param cwd CMake build directory to run the command within
  * @param buildConfig Build configuration (may be empty)
+ * @param extraArgs Extra arguments passed to CTest
  */
 export function loadCmakeTests(
   ctestPath: string,
   cwd: string,
-  buildConfig?: string
+  buildConfig?: string,
+  extraArgs: string = ''
 ): Promise<CmakeTestInfo[]> {
   return new Promise<CmakeTestInfo[]>((resolve, reject) => {
     try {
@@ -46,12 +50,16 @@ export function loadCmakeTests(
         throw new Error(`Directory '${cwd}' does not exist`);
       }
 
+      // Split args string into array for spawn
+      const args = split(extraArgs);
+
       // Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
       const ctestProcess = child_process.spawn(
         ctestPath,
         [
           '--show-only=json-v1',
           ...(!!buildConfig ? ['--build-config', buildConfig] : []),
+          ...args,
         ],
         { cwd }
       );
@@ -92,11 +100,16 @@ export function loadCmakeTests(
  *
  * @param ctestPath CTest command path
  * @param test Test to run
+ * @param extraArgs Extra arguments passed to CTest
  */
 export function scheduleCmakeTest(
   ctestPath: string,
-  test: CmakeTestInfo
+  test: CmakeTestInfo,
+  extraArgs: string = ''
 ): CmakeTestProcess {
+  // Split args string into array for spawn
+  const args = split(extraArgs);
+
   const { name, config } = test;
   const WORKING_DIRECTORY = test.properties.find(
     p => p.name === 'WORKING_DIRECTORY'
@@ -109,6 +122,7 @@ export function scheduleCmakeTest(
       `^${name}$`,
       '--output-on-failure',
       ...(!!config ? ['-C', config] : []),
+      ...args,
     ],
     { cwd }
   );
@@ -165,12 +179,14 @@ export function cancelCmakeTest(testProcess: CmakeTestProcess) {
  *
  * @param ctestPath CTest command path
  * @param test Test to run
+ * @param extraArgs Extra arguments passed to CTest
  */
 export function runCmakeTest(
   ctestPath: string,
-  test: CmakeTestInfo
+  test: CmakeTestInfo,
+  extraArgs: string = ''
 ): Promise<CmakeTestResult> {
-  const testProcess = scheduleCmakeTest(ctestPath, test);
+  const testProcess = scheduleCmakeTest(ctestPath, test, extraArgs);
   return executeCmakeTest(testProcess);
 }
 

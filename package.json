@@ -32,6 +32,7 @@
     "publish": "vsce publish"
   },
   "dependencies": {
+    "split-cmd": "^1.0.1",
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.7.0",
     "vscode-test-adapter-util": "^0.7.0"
@@ -63,6 +64,18 @@
         },
         "cmakeExplorer.buildConfig": {
           "description": "The CMake build configuration (empty for any)",
+          "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.extraCtestLoadArgs": {
+          "description": "Extra command-line arguments passed to CTest at load time",
+          "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.extraCtestRunArgs": {
+          "description": "Extra command-line arguments passed to CTest at run time",
           "type": "string",
           "default": "",
           "scope": "resource"
