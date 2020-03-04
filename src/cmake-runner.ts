@@ -206,8 +206,8 @@ export function executeCmakeDebug(
           );
           const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value as string : undefined;
           let workspaceFolder = undefined;
-          if (typeof cwd === 'string') {
-            workspaceFolder = workspace.workspaceFolders?.find(folder => folder.uri.fsPath.indexOf(cwd) > -1);
+          if (typeof cwd === 'string' && Array.isArray(workspace.workspaceFolders)) {
+            workspaceFolder = workspace.workspaceFolders.find(folder => folder.uri.fsPath.indexOf(cwd) > -1);
           }
           debug.startDebugging(workspaceFolder, {
             name: '(gdb) Launch',
