@@ -5,6 +5,7 @@
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { debug, workspace } from 'vscode';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
@@ -26,6 +27,18 @@ export class CacheNotFoundError extends Error {
     // Set the prototype explicitly.
     Object.setPrototypeOf(this, CacheNotFoundError.prototype);
   }
+}
+
+type KeyValue = {
+  name: string,
+  value: string | number | boolean,
+}
+
+type CTestTestDescription = {
+  backtrace: number,
+  command: string[],
+  name: string,
+  properties: KeyValue[],
 }
 
 /**
@@ -153,6 +166,76 @@ export function executeCmakeTest(
       // The 'exit' event is always sent even if the child process crashes or is
       // killed so we can safely resolve/reject the promise from there
       testProcess.once('exit', code => {
+        const result: CmakeTestResult = {
+          code,
+          out: out.length ? out.join('') : undefined,
+        };
+        resolve(result);
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+/**
+ * Execute a previously scheduled CMake test
+ *
+ * @param testProcess Scheduled test process
+ */
+export function executeCmakeDebug(
+  testProcess: CmakeTestProcess
+): Promise<CmakeTestResult> {
+  return new Promise<CmakeTestResult>((resolve, reject) => {
+    try {
+      // Capture result on stdout
+      const out: string[] = [];
+      let found = false;
+      testProcess.stdout.on('data', data => {
+        out.push(data);
+        try {
+          const { tests } = JSON.parse(data) as { tests: CTestTestDescription[] };
+          if (tests.length === 0) return;
+          // Assumes only one test is returned and discards the rest
+          const test = tests.find(item => Array.isArray(item.command) && item.command.length > 0);
+          if (typeof test !== 'object' || test === null || test.command.length === 0) return;
+          const args = test.command.slice(1);
+          const program = test.command[0];
+          const WORKING_DIRECTORY = test.properties.find(
+            p => p.name === 'WORKING_DIRECTORY'
+          );
+          const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value as string : undefined;
+          let workspaceFolder = undefined;
+          if (typeof cwd === 'string') {
+            workspaceFolder = workspace.workspaceFolders?.find(folder => folder.uri.fsPath.indexOf(cwd) > -1);
+          }
+          debug.startDebugging(workspaceFolder, {
+            name: '(gdb) Launch',
+            type: 'cppdbg',
+            request: 'launch',
+            program,
+            args,
+            stopAtEntry: false,
+            cwd: workspace.rootPath,
+            environment: test.properties,
+            externalConsole: false,
+            MIMode: 'gdb',
+            setupCommands: [
+              {
+                description: 'Enable pretty-print for gdb',
+                text: '-enable-pretty-printing',
+                ignoreFailures: true,
+              },
+            ]
+          });
+          found = true;
+        } catch { }
+      });
+
+      // The 'exit' event is always sent even if the child process crashes or is
+      // killed so we can safely resolve/reject the promise from there
+      testProcess.once('exit', code => {
+        if (!found) return reject('No tests found.');
         const result: CmakeTestResult = {
           code,
           out: out.length ? out.join('') : undefined,

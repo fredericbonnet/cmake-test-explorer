@@ -24,6 +24,7 @@ import {
   loadCmakeTests,
   scheduleCmakeTest,
   executeCmakeTest,
+  executeCmakeDebug,
   cancelCmakeTest,
   CacheNotFoundError,
   getCtestPath,
@@ -152,7 +153,7 @@ export class CmakeAdapter implements TestAdapter {
     this.state = 'idle';
   }
 
-  async run(tests: string[]): Promise<void> {
+  async run(tests: string[], debug = false): Promise<void> {
     if (this.state !== 'idle') return; // it is safe to ignore a call to `run()`
 
     this.state = 'running';
@@ -164,7 +165,7 @@ export class CmakeAdapter implements TestAdapter {
 
     try {
       for (const id of tests) {
-        await this.runTest(id);
+        await this.runTest(id, debug);
       }
     } catch (e) {
       // Fail silently
@@ -174,11 +175,9 @@ export class CmakeAdapter implements TestAdapter {
     this.state = 'idle';
   }
 
-  /*	implement this method if your TestAdapter supports debugging tests
-	async debug(tests: string[]): Promise<void> {
-		// start a test run in a child process and attach the debugger to it...
+	debug(tests: string[]): Promise<void> {
+		return this.run(tests, true);
 	}
-*/
 
   cancel(): void {
     if (this.state !== 'running') return; // ignore
@@ -202,7 +201,7 @@ export class CmakeAdapter implements TestAdapter {
    *
    * @param id Test or suite ID
    */
-  private async runTest(id: string) {
+  private async runTest(id: string, debug = false) {
     if (this.state === 'cancelled') {
       // Test run cancelled, retire test
       this.retireEmitter.fire(<RetireEvent>{ tests: [id] });
@@ -217,7 +216,7 @@ export class CmakeAdapter implements TestAdapter {
         state: 'running',
       });
       for (const test of this.cmakeTests) {
-        await this.runTest(test.name);
+        await this.runTest(test.name, debug);
       }
       this.testStatesEmitter.fire(<TestSuiteEvent>{
         type: 'suite',
@@ -254,13 +253,15 @@ export class CmakeAdapter implements TestAdapter {
         'cmakeExplorer',
         this.workspaceFolder.uri
       );
-      const extraCtestRunArgs = config.get<string>('extraCtestRunArgs') || '';
+      const baseArgs = debug ? '-V --show-only=json-v1' : '';
+      const extraCtestRunArgs = `${baseArgs} ${config.get<string>('extraCtestRunArgs') || ''}`.trim();
       this.currentTest = scheduleCmakeTest(
         this.ctestPath,
         test,
         extraCtestRunArgs
       );
-      const result: CmakeTestResult = await executeCmakeTest(this.currentTest);
+      const execute = debug ? executeCmakeDebug : executeCmakeTest;
+      const result: CmakeTestResult = await execute(this.currentTest);
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',
         test: id,
