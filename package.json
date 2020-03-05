@@ -38,12 +38,12 @@
     "vscode-test-adapter-util": "^0.7.0"
   },
   "devDependencies": {
-    "@types/vscode": "~1.23.0",
+    "@types/vscode": "~1.31.0",
     "typescript": "^3.5.3",
     "vsce": "^1.65.0"
   },
   "engines": {
-    "vscode": "^1.23.0"
+    "vscode": "^1.31.0"
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer"
@@ -66,6 +66,12 @@
           "description": "The CMake build configuration (empty for any)",
           "type": "string",
           "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.cmakeIntegration": {
+          "description": "Integrate with the CMake VSCode extension to provide contextual awareness",
+          "type": "boolean",
+          "default": "false",
           "scope": "resource"
         },
         "cmakeExplorer.extraCtestLoadArgs": {
