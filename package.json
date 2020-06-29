@@ -5,7 +5,7 @@
   "icon": "img/icon.png",
   "author": "Frédéric Bonnet <fredericbonnet@free.fr>",
   "publisher": "fredericbonnet",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
