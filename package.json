@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@types/vscode": "~1.23.0",
+    "prettier": "^2.0.5",
     "typescript": "^3.5.3",
     "vsce": "^1.65.0"
   },
@@ -64,6 +65,12 @@
         },
         "cmakeExplorer.buildConfig": {
           "description": "The CMake build configuration (empty for any)",
+          "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.debugConfig": {
+          "description": "Custom debug configuration to use (empty for default)",
           "type": "string",
           "default": "",
           "scope": "resource"

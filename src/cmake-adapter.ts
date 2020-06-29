@@ -50,7 +50,10 @@ export class CmakeAdapter implements TestAdapter {
     'idle';
 
   /** Currently running test */
-  private currentTest?: CmakeTestProcess;
+  private currentTestProcess?: CmakeTestProcess;
+
+  /** Currently debugged test config */
+  private debuggedTestConfig?: Partial<vscode.DebugConfiguration>;
 
   //
   // TestAdapter implementations
@@ -82,9 +85,27 @@ export class CmakeAdapter implements TestAdapter {
 
   constructor(
     public readonly workspaceFolder: vscode.WorkspaceFolder,
-    private readonly log: Log
+    private readonly log: Log,
+    context: vscode.ExtensionContext
   ) {
     this.log.info('Initializing CMake test adapter');
+
+    // Register a DebugConfigurationProvider to combine global and
+    // test-specific debug configurations (see debugTest)
+    context.subscriptions.push(
+      vscode.debug.registerDebugConfigurationProvider('cppdbg', {
+        resolveDebugConfiguration: (
+          folder: vscode.WorkspaceFolder | undefined,
+          config: vscode.DebugConfiguration,
+          token?: vscode.CancellationToken
+        ): vscode.ProviderResult<vscode.DebugConfiguration> => {
+          return {
+            ...config,
+            ...this.debuggedTestConfig,
+          };
+        },
+      })
+    );
 
     this.disposables.push(this.testsEmitter);
     this.disposables.push(this.testStatesEmitter);
@@ -201,7 +222,7 @@ export class CmakeAdapter implements TestAdapter {
   cancel(): void {
     if (this.state !== 'running') return; // ignore
 
-    if (this.currentTest) cancelCmakeTest(this.currentTest);
+    if (this.currentTestProcess) cancelCmakeTest(this.currentTestProcess);
 
     // State will eventually transition to idle once the run loop completes
     this.state = 'cancelled';
@@ -250,7 +271,7 @@ export class CmakeAdapter implements TestAdapter {
     // Single test
     //
 
-    const test = this.cmakeTests.find(test => test.name === id);
+    const test = this.cmakeTests.find((test) => test.name === id);
     if (!test) {
       // Not found, mark test as skipped.
       this.testStatesEmitter.fire(<TestEvent>{
@@ -273,12 +294,14 @@ export class CmakeAdapter implements TestAdapter {
         this.workspaceFolder.uri
       );
       const extraCtestRunArgs = config.get<string>('extraCtestRunArgs') || '';
-      this.currentTest = scheduleCmakeTest(
+      this.currentTestProcess = scheduleCmakeTest(
         this.ctestPath,
         test,
         extraCtestRunArgs
       );
-      const result: CmakeTestResult = await executeCmakeTest(this.currentTest);
+      const result: CmakeTestResult = await executeCmakeTest(
+        this.currentTestProcess
+      );
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',
         test: id,
@@ -293,7 +316,7 @@ export class CmakeAdapter implements TestAdapter {
         message: e.toString(),
       });
     } finally {
-      this.currentTest = undefined;
+      this.currentTestProcess = undefined;
     }
   }
 
@@ -312,28 +335,72 @@ export class CmakeAdapter implements TestAdapter {
     // Single test
     //
 
-    const test = this.cmakeTests.find(test => test.name === id);
+    const test = this.cmakeTests.find((test) => test.name === id);
     if (!test) {
-      // Not found
+      // Not found, mark test as skipped.
+      this.testStatesEmitter.fire(<TestEvent>{
+        type: 'test',
+        test: id,
+        state: 'skipped',
+      });
       return;
     }
 
     // Debug test
-    // TODO allow custom configs
-    const defaultConfig: vscode.DebugConfiguration = {
-      name: `CTest ${test.name}`,
-      type: 'cppdbg',
-      request: 'launch',
-      windows: {
-        type: 'cppvsdbg',
-      },
-    };
-    const config = {
-      ...defaultConfig,
-      ...getCmakeTestDebugConfiguration(test),
-    };
-    // TODO monitor sessions? Is it useful? see onDidStartDebugSession/onDidTerminateDebugSession
-    console.log(config);
-    await vscode.debug.startDebugging(this.workspaceFolder, config);
+    this.testStatesEmitter.fire(<TestEvent>{
+      type: 'test',
+      test: id,
+      state: 'running',
+    });
+    try {
+      // Get test config
+      const config = vscode.workspace.getConfiguration(
+        'cmakeExplorer',
+        this.workspaceFolder.uri
+      );
+      const debugConfig = config.get<string>('debugConfig');
+      const defaultConfig: vscode.DebugConfiguration = {
+        name: 'CTest',
+        type: 'cppdbg',
+        request: 'launch',
+        windows: {
+          type: 'cppvsdbg',
+        },
+        linux: {
+          type: 'cppdbg',
+          MIMode: 'gdb',
+        },
+        osx: {
+          type: 'cppdbg',
+          MIMode: 'lldb',
+        },
+      };
+
+      // Remember test-specific config for the DebugConfigurationProvider registered
+      // in the constructor (method resolveDebugConfiguration)
+      this.debuggedTestConfig = getCmakeTestDebugConfiguration(test);
+
+      // Start the debugging session. The actual debug config will combine the
+      // global and test-specific values
+      await vscode.debug.startDebugging(
+        this.workspaceFolder,
+        debugConfig || defaultConfig
+      );
+      // TODO monitor sessions? Is it useful? see onDidStartDebugSession/onDidTerminateDebugSession
+      this.testStatesEmitter.fire(<TestEvent>{
+        type: 'test',
+        test: id,
+        state: 'passed',
+      });
+    } catch (e) {
+      this.testStatesEmitter.fire(<TestEvent>{
+        type: 'test',
+        test: id,
+        state: 'errored',
+        message: e.toString(),
+      });
+    } finally {
+      this.debuggedTestConfig = undefined;
+    }
   }
 }

@@ -71,7 +71,7 @@ export function loadCmakeTests(
 
       // Capture result on stdout
       const out: string[] = [];
-      ctestProcess.stdout.on('data', data => {
+      ctestProcess.stdout.on('data', (data) => {
         out.push(data);
       });
 
@@ -113,7 +113,7 @@ export function scheduleCmakeTest(
 
   const { name, config } = test;
   const WORKING_DIRECTORY = test.properties.find(
-    p => p.name === 'WORKING_DIRECTORY'
+    (p) => p.name === 'WORKING_DIRECTORY'
   );
   const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
   const testProcess = child_process.spawn(
@@ -147,13 +147,13 @@ export function executeCmakeTest(
     try {
       // Capture result on stdout
       const out: string[] = [];
-      testProcess.stdout.on('data', data => {
+      testProcess.stdout.on('data', (data) => {
         out.push(data);
       });
 
       // The 'exit' event is always sent even if the child process crashes or is
       // killed so we can safely resolve/reject the promise from there
-      testProcess.once('exit', code => {
+      testProcess.once('exit', (code) => {
         const result: CmakeTestResult = {
           code,
           out: out.length ? out.join('') : undefined,
@@ -201,10 +201,11 @@ export function getCmakeTestDebugConfiguration(
 ): Partial<vscode.DebugConfiguration> {
   const [command, ...args] = test.command;
   const WORKING_DIRECTORY = test.properties.find(
-    p => p.name === 'WORKING_DIRECTORY'
+    (p) => p.name === 'WORKING_DIRECTORY'
   );
   const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
   return {
+    name: `CTest ${test.name}`,
     program: command,
     args,
     cwd,
@@ -226,10 +227,7 @@ export function getCtestPath(cwd: string) {
   }
 
   // Extract CTest path from cache file.
-  const match = fs
-    .readFileSync(cacheFilePath)
-    .toString()
-    .match(CTEST_RE);
+  const match = fs.readFileSync(cacheFilePath).toString().match(CTEST_RE);
   if (!match) {
     throw new Error(
       `CTest path not found in CMake cache file ${cacheFilePath}`
