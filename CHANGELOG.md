@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-07-14
+
+### Added
+
+- Add variable substitution in settings
+- Add [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) integration
+
+Thanks to @andrewbridge for these contributions!
+
 ## [0.7.0] - 2020-06-29
 
 ### Added
@@ -60,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.7.0...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.4.0...v0.5.0

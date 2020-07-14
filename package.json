@@ -9,7 +9,7 @@
     "Andrew Bridge (https://github.com/andrewbridge)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
@@ -74,7 +74,7 @@
           "scope": "resource"
         },
         "cmakeExplorer.cmakeIntegration": {
-          "description": "Integrate with the CMake VSCode extension to provide contextual awareness",
+          "description": "Integrate with the CMake Tools extension for additional variables",
           "type": "boolean",
           "default": "false",
           "scope": "resource"
