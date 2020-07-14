@@ -4,6 +4,10 @@
   "description": "Run your CMake tests in the Sidebar of Visual Studio Code",
   "icon": "img/icon.png",
   "author": "Frédéric Bonnet <fredericbonnet@free.fr>",
+  "contributors": [
+    "Frédéric Bonnet <fredericbonnet@free.fr>",
+    "Andrew Bridge (https://github.com/andrewbridge)"
+  ],
   "publisher": "fredericbonnet",
   "version": "0.7.0",
   "license": "BSD-3-Clause",
