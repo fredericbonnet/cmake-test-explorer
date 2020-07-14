@@ -120,13 +120,23 @@ export class CmakeAdapter implements TestAdapter {
 
     let buildDir;
     try {
+      // Get & substitute config settings
       const config = vscode.workspace.getConfiguration(
         'cmakeExplorer',
         this.workspaceFolder.uri
       );
-      buildDir = await this.configGetStr(config, 'buildDir');
-      const buildConfig = await this.configGetStr(config, 'buildConfig');
-      const extraCtestLoadArgs = await this.configGetStr(config, 'extraCtestLoadArgs');
+      const varMap = await this.getVariableSubstitutionMap();
+      buildDir = await this.configGetStr(config, varMap, 'buildDir');
+      const buildConfig = await this.configGetStr(
+        config,
+        varMap,
+        'buildConfig'
+      );
+      const extraCtestLoadArgs = await this.configGetStr(
+        config,
+        varMap,
+        'extraCtestLoadArgs'
+      );
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
       this.ctestPath = getCtestPath(dir);
       this.cmakeTests = await loadCmakeTests(
@@ -282,7 +292,12 @@ export class CmakeAdapter implements TestAdapter {
         'cmakeExplorer',
         this.workspaceFolder.uri
       );
-      const extraCtestRunArgs = config.get<string>('extraCtestRunArgs') || '';
+      const varMap = await this.getVariableSubstitutionMap();
+      const extraCtestRunArgs = await this.configGetStr(
+        config,
+        varMap,
+        'extraCtestRunArgs'
+      );
       this.currentTestProcess = scheduleCmakeTest(
         this.ctestPath,
         test,
@@ -338,7 +353,12 @@ export class CmakeAdapter implements TestAdapter {
         'cmakeExplorer',
         this.workspaceFolder.uri
       );
-      const debugConfig = config.get<string>('debugConfig');
+      const varMap = await this.getVariableSubstitutionMap();
+      const debugConfig = await this.configGetStr(
+        config,
+        varMap,
+        'debugConfig'
+      );
       const defaultConfig: vscode.DebugConfiguration = {
         name: 'CTest',
         type: 'cppdbg',
@@ -373,24 +393,45 @@ export class CmakeAdapter implements TestAdapter {
     }
   }
 
-  configGetStr(config: vscode.WorkspaceConfiguration, key: string) {
-    const item = config.get<string>(key) || '';
-    return this.substituteConfigStr(item);
-  }
-
-  async substituteConfigStr(configStr: string) {
-    const substitutionMap = new Map<string, string>([
-      ['${workspaceFolder}', this.workspaceFolder.uri.fsPath],
-    ]);
-    if ((await vscode.commands.getCommands()).includes('cmake.buildType')) {
-      substitutionMap.set('${buildType}', await vscode.commands.executeCommand('cmake.buildType') as string);
-    }
+  /**
+   * Get & substitute config settings
+   *
+   * @param config VS Code workspace configuration
+   * @param varMap Variable to value map
+   * @param key Config name
+   */
+  private async configGetStr(
+    config: vscode.WorkspaceConfiguration,
+    varMap: Map<string, string>,
+    key: string
+  ) {
+    const configStr = config.get<string>(key) || '';
     let str = configStr;
-    substitutionMap.forEach((value, key) => {
-      while(str.indexOf(key) > -1) {
+    varMap.forEach((value, key) => {
+      while (str.indexOf(key) > -1) {
         str = str.replace(key, value);
       }
     });
     return str;
+  }
+
+  /**
+   * Get variable to value substitution map for config strings
+   */
+  private async getVariableSubstitutionMap() {
+    // Standard variables
+    const substitutionMap = new Map<string, string>([
+      ['${workspaceFolder}', this.workspaceFolder.uri.fsPath],
+    ]);
+
+    // Variables from the CMake Tools extension
+    for (const varname of ['buildType', 'buildDirectory']) {
+      const command = `cmake.${varname}`;
+      if ((await vscode.commands.getCommands()).includes(command)) {
+        const value = (await vscode.commands.executeCommand(command)) as string;
+        substitutionMap.set(`\${${varname}}`, value);
+      }
+    }
+    return substitutionMap;
   }
 }
