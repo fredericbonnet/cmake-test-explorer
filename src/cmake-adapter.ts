@@ -46,8 +46,7 @@ export class CmakeAdapter implements TestAdapter {
   private cmakeTests: CmakeTestInfo[] = [];
 
   /** State */
-  private state: 'idle' | 'loading' | 'running' | 'debugging' | 'cancelled' =
-    'idle';
+  private state: 'idle' | 'loading' | 'running' | 'cancelled' = 'idle';
 
   /** Currently running test */
   private currentTestProcess?: CmakeTestProcess;
@@ -198,14 +197,7 @@ export class CmakeAdapter implements TestAdapter {
   }
 
   async debug(tests: string[]): Promise<void> {
-    if (this.state !== 'idle') return; // it is safe to ignore a call to `debug()`
-
-    this.state = 'debugging';
     this.log.info(`Debugging CMake tests ${JSON.stringify(tests)}`);
-    this.testStatesEmitter.fire(<TestRunStartedEvent>{
-      type: 'started',
-      tests,
-    });
 
     try {
       for (const id of tests) {
@@ -214,9 +206,6 @@ export class CmakeAdapter implements TestAdapter {
     } catch (e) {
       // Fail silently
     }
-
-    this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
-    this.state = 'idle';
   }
 
   cancel(): void {
@@ -337,21 +326,12 @@ export class CmakeAdapter implements TestAdapter {
 
     const test = this.cmakeTests.find((test) => test.name === id);
     if (!test) {
-      // Not found, mark test as skipped.
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: 'skipped',
-      });
+      // Not found.
       return;
     }
 
     // Debug test
-    this.testStatesEmitter.fire(<TestEvent>{
-      type: 'test',
-      test: id,
-      state: 'running',
-    });
+    this.log.info(`Debugging CMake test ${id}`);
     try {
       // Get test config
       const config = vscode.workspace.getConfiguration(
@@ -386,19 +366,8 @@ export class CmakeAdapter implements TestAdapter {
         this.workspaceFolder,
         debugConfig || defaultConfig
       );
-      // TODO monitor sessions? Is it useful? see onDidStartDebugSession/onDidTerminateDebugSession
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: 'passed',
-      });
     } catch (e) {
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: 'errored',
-        message: e.toString(),
-      });
+      this.log.error(`Error debugging CMake test ${id}`, e.toString());
     } finally {
       this.debuggedTestConfig = undefined;
     }
