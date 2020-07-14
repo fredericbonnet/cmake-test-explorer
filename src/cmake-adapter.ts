@@ -124,9 +124,9 @@ export class CmakeAdapter implements TestAdapter {
         'cmakeExplorer',
         this.workspaceFolder.uri
       );
-      buildDir = config.get<string>('buildDir') || '';
-      const buildConfig = config.get<string>('buildConfig') || '';
-      const extraCtestLoadArgs = config.get<string>('extraCtestLoadArgs') || '';
+      buildDir = await this.configGetStr(config, 'buildDir');
+      const buildConfig = await this.configGetStr(config, 'buildConfig');
+      const extraCtestLoadArgs = await this.configGetStr(config, 'extraCtestLoadArgs');
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
       this.ctestPath = getCtestPath(dir);
       this.cmakeTests = await loadCmakeTests(
@@ -371,5 +371,26 @@ export class CmakeAdapter implements TestAdapter {
     } finally {
       this.debuggedTestConfig = undefined;
     }
+  }
+
+  configGetStr(config: vscode.WorkspaceConfiguration, key: string) {
+    const item = config.get<string>(key) || '';
+    return this.substituteConfigStr(item);
+  }
+
+  async substituteConfigStr(configStr: string) {
+    const substitutionMap = new Map<string, string>([
+      ['${workspaceFolder}', this.workspaceFolder.uri.fsPath],
+    ]);
+    if ((await vscode.commands.getCommands()).includes('cmake.buildType')) {
+      substitutionMap.set('${buildType}', await vscode.commands.executeCommand('cmake.buildType') as string);
+    }
+    let str = configStr;
+    substitutionMap.forEach((value, key) => {
+      while(str.indexOf(key) > -1) {
+        str = str.replace(key, value);
+      }
+    });
+    return str;
   }
 }
