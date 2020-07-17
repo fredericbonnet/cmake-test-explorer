@@ -13,7 +13,6 @@ import {
   TestSuiteEvent,
   TestEvent,
   TestSuiteInfo,
-  TestInfo,
   RetireEvent,
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
@@ -118,67 +117,17 @@ export class CmakeAdapter implements TestAdapter {
     this.log.info('Loading CMake tests');
     this.testsEmitter.fire(<TestLoadStartedEvent>{ type: 'started' });
 
-    let buildDir;
     try {
-      // Get & substitute config settings
-      const config = vscode.workspace.getConfiguration(
-        'cmakeExplorer',
-        this.workspaceFolder.uri
-      );
-      const varMap = await this.getVariableSubstitutionMap();
-      buildDir = await this.configGetStr(config, varMap, 'buildDir');
-      const buildConfig = await this.configGetStr(
-        config,
-        varMap,
-        'buildConfig'
-      );
-      const extraCtestLoadArgs = await this.configGetStr(
-        config,
-        varMap,
-        'extraCtestLoadArgs'
-      );
-      const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.ctestPath = getCtestPath(dir);
-      this.cmakeTests = await loadCmakeTests(
-        this.ctestPath,
-        dir,
-        buildConfig,
-        extraCtestLoadArgs
-      );
-
-      const suite: TestSuiteInfo = {
-        type: 'suite',
-        id: ROOT_SUITE_ID,
-        label: 'CMake', // the label of the root node should be the name of the testing framework
-        children: [],
-      };
-
-      for (let test of this.cmakeTests) {
-        const testInfo: TestInfo = {
-          type: 'test',
-          id: test.name,
-          label: test.name,
-        };
-        suite.children.push(testInfo);
-      }
-
+      const suite = await this.loadTestSuite();
       this.testsEmitter.fire(<TestLoadFinishedEvent>{
         type: 'finished',
         suite,
       });
     } catch (e) {
-      if (e instanceof CacheNotFoundError && buildDir === '') {
-        // Ignore error when using default config
-        this.testsEmitter.fire(<TestLoadFinishedEvent>{
-          type: 'finished',
-        });
-      } else {
-        // Report error
-        this.testsEmitter.fire(<TestLoadFinishedEvent>{
-          type: 'finished',
-          errorMessage: e.toString(),
-        });
-      }
+      this.testsEmitter.fire(<TestLoadFinishedEvent>{
+        type: 'finished',
+        errorMessage: e.toString(),
+      });
     }
 
     this.state = 'idle';
@@ -236,6 +185,55 @@ export class CmakeAdapter implements TestAdapter {
   }
 
   /**
+   * Load test suite
+   */
+  private async loadTestSuite() {
+    try {
+      // Get & substitute config settings
+      const [
+        buildDir,
+        buildConfig,
+        extraCtestLoadArgs,
+      ] = await this.getConfigStrings([
+        'buildDir',
+        'buildConfig',
+        'extraCtestLoadArgs',
+      ]);
+
+      // Load CTest test list
+      const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
+      this.ctestPath = getCtestPath(dir);
+      this.cmakeTests = await loadCmakeTests(
+        this.ctestPath,
+        dir,
+        buildConfig,
+        extraCtestLoadArgs
+      );
+
+      // Convert to Text Explorer format: one top-level suite containing all tests
+      // CTest doesn't support nested tests
+      const suite: TestSuiteInfo = {
+        type: 'suite',
+        id: ROOT_SUITE_ID,
+        label: 'CMake', // the label of the root node should be the name of the testing framework
+        children: this.cmakeTests.map((test) => ({
+          type: 'test',
+          id: test.name,
+          label: test.name,
+        })),
+      };
+      return suite;
+    } catch (e) {
+      if (e instanceof CacheNotFoundError && this.isDefaultConfiguration()) {
+        // Ignore error when using default config, return empty result instead
+        return;
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Run a single test or test suite
    *
    * @param id Test or suite ID
@@ -288,16 +286,9 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      const config = vscode.workspace.getConfiguration(
-        'cmakeExplorer',
-        this.workspaceFolder.uri
-      );
-      const varMap = await this.getVariableSubstitutionMap();
-      const extraCtestRunArgs = await this.configGetStr(
-        config,
-        varMap,
-        'extraCtestRunArgs'
-      );
+      const [extraCtestRunArgs] = await this.getConfigStrings([
+        'extraCtestRunArgs',
+      ]);
       this.currentTestProcess = scheduleCmakeTest(
         this.ctestPath,
         test,
@@ -349,32 +340,8 @@ export class CmakeAdapter implements TestAdapter {
     this.log.info(`Debugging CMake test ${id}`);
     try {
       // Get test config
-      const config = vscode.workspace.getConfiguration(
-        'cmakeExplorer',
-        this.workspaceFolder.uri
-      );
-      const varMap = await this.getVariableSubstitutionMap();
-      const debugConfig = await this.configGetStr(
-        config,
-        varMap,
-        'debugConfig'
-      );
-      const defaultConfig: vscode.DebugConfiguration = {
-        name: 'CTest',
-        type: 'cppdbg',
-        request: 'launch',
-        windows: {
-          type: 'cppvsdbg',
-        },
-        linux: {
-          type: 'cppdbg',
-          MIMode: 'gdb',
-        },
-        osx: {
-          type: 'cppdbg',
-          MIMode: 'lldb',
-        },
-      };
+      const [debugConfig] = await this.getConfigStrings(['debugConfig']);
+      const defaultConfig = this.getDefaultDebugConfiguration();
 
       // Remember test-specific config for the DebugConfigurationProvider registered
       // in the constructor (method resolveDebugConfiguration)
@@ -394,13 +361,66 @@ export class CmakeAdapter implements TestAdapter {
   }
 
   /**
+   * Get default debug config when none is specified in the settings
+   */
+  private getDefaultDebugConfiguration(): vscode.DebugConfiguration {
+    return {
+      name: 'CTest',
+      type: 'cppdbg',
+      request: 'launch',
+      windows: {
+        type: 'cppvsdbg',
+      },
+      linux: {
+        type: 'cppdbg',
+        MIMode: 'gdb',
+      },
+      osx: {
+        type: 'cppdbg',
+        MIMode: 'lldb',
+      },
+    };
+  }
+
+  /**
+   * Get workspace configuration object
+   */
+  private getWorkspaceConfiguration() {
+    return vscode.workspace.getConfiguration(
+      'cmakeExplorer',
+      this.workspaceFolder.uri
+    );
+  }
+
+  /**
+   * Check whether the config has default values while loading
+   */
+  private isDefaultConfiguration() {
+    const config = this.getWorkspaceConfiguration();
+    return !config.get<string>('buildDir');
+  }
+
+  /**
+   * Get & substitute config settings
+   *
+   * @param name Config names
+   *
+   * @return Config values
+   */
+  private async getConfigStrings(names: string[]) {
+    const config = this.getWorkspaceConfiguration();
+    const varMap = await this.getVariableSubstitutionMap();
+    return names.map((name) => this.configGetStr(config, varMap, name));
+  }
+
+  /**
    * Get & substitute config settings
    *
    * @param config VS Code workspace configuration
    * @param varMap Variable to value map
    * @param key Config name
    */
-  private async configGetStr(
+  private configGetStr(
     config: vscode.WorkspaceConfiguration,
     varMap: Map<string, string>,
     key: string
