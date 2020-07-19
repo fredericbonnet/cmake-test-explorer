@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
 import {
   TestAdapter,
   TestLoadStartedEvent,
@@ -48,8 +49,13 @@ export class CmakeAdapter implements TestAdapter {
   /** State */
   private state: 'idle' | 'loading' | 'running' | 'cancelled' = 'idle';
 
-  /** Currently running test */
-  private currentTestProcess?: CmakeTestProcess;
+  /** Currently running tests */
+  private currentTestProcessList: {
+    [id: string]: CmakeTestProcess
+  } = {};
+
+  /** Currently running tests */
+  private runningTests: Promise<void>[] = [];
 
   /** Currently debugged test config */
   private debuggedTestConfig?: Partial<vscode.DebugConfiguration>;
@@ -221,7 +227,9 @@ export class CmakeAdapter implements TestAdapter {
   cancel(): void {
     if (this.state !== 'running') return; // ignore
 
-    if (this.currentTestProcess) cancelCmakeTest(this.currentTestProcess);
+    for (const proc of Object.values(this.currentTestProcessList)) {
+      cancelCmakeTest(proc)
+    }
 
     // State will eventually transition to idle once the run loop completes
     this.state = 'cancelled';
@@ -247,16 +255,49 @@ export class CmakeAdapter implements TestAdapter {
       return;
     }
 
+    const config = vscode.workspace.getConfiguration(
+      'cmakeExplorer',
+      this.workspaceFolder.uri
+    );
+
     if (id === ROOT_SUITE_ID) {
       // Run the whole test suite
+
+      let parallelJobs = config.get<number>("parallelJobs");
+      if (!parallelJobs) {
+        const cmakeConfig = vscode.workspace.getConfiguration(
+          'cmake',
+          this.workspaceFolder.uri
+        );
+        parallelJobs = cmakeConfig.get<number>("ctest.parallelJobs");
+        if (!parallelJobs) {
+          parallelJobs = cmakeConfig.get<number>("parallelJobs");
+          if (!parallelJobs) {
+            parallelJobs = os.cpus().length
+          }
+        }
+      }
+      if (parallelJobs < 1) parallelJobs = 1;
+
       this.testStatesEmitter.fire(<TestSuiteEvent>{
         type: 'suite',
         suite: id,
         state: 'running',
       });
+
+      const tests = [];
       for (const test of this.cmakeTests) {
-        await this.runTest(test.name);
+        const run = this.runTest(test.name);
+        tests.push(run);
+        const cleanup = () => this.runningTests.splice(this.runningTests.indexOf(running), 1);
+        const running: any = run.catch(cleanup).then(cleanup);
+        this.runningTests.push(running);
+        while (this.runningTests.length >= parallelJobs) {
+          await Promise.race(this.runningTests);
+        }
       }
+      await Promise.all(tests);
+
       this.testStatesEmitter.fire(<TestSuiteEvent>{
         type: 'suite',
         suite: id,
@@ -288,23 +329,19 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      const config = vscode.workspace.getConfiguration(
-        'cmakeExplorer',
-        this.workspaceFolder.uri
-      );
       const varMap = await this.getVariableSubstitutionMap();
       const extraCtestRunArgs = await this.configGetStr(
         config,
         varMap,
         'extraCtestRunArgs'
       );
-      this.currentTestProcess = scheduleCmakeTest(
+      this.currentTestProcessList[id] = scheduleCmakeTest(
         this.ctestPath,
         test,
         extraCtestRunArgs
       );
       const result: CmakeTestResult = await executeCmakeTest(
-        this.currentTestProcess
+        this.currentTestProcessList[id]
       );
       this.testStatesEmitter.fire(<TestEvent>{
         type: 'test',
@@ -320,7 +357,7 @@ export class CmakeAdapter implements TestAdapter {
         message: e.toString(),
       });
     } finally {
-      this.currentTestProcess = undefined;
+      delete this.currentTestProcessList[id];
     }
   }
 

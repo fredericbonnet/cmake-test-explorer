@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add parallel tests execution
+
 ## [0.8.0] - 2020-07-14
 
 ### Added
