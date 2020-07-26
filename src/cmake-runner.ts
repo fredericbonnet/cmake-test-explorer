@@ -66,7 +66,7 @@ export function loadCmakeTests(
       );
       if (!ctestProcess.pid) {
         // Something failed, e.g. the executable or cwd doesn't exist
-        throw new Error(`Cannot spaw command '${ctestPath}'`);
+        throw new Error(`Cannot spawn command '${ctestPath}'`);
       }
 
       // Capture result on stdout
