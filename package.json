@@ -85,6 +85,12 @@
           "default": "",
           "scope": "resource"
         },
+        "cmakeExplorer.parallelJobs": {
+          "description": "The number of parallel test jobs (use zero to use the value of cmake.ctest.parallelJobs)",
+          "type": "integer",
+          "default": 0,
+          "scope": "resource"
+        },
         "cmakeExplorer.extraCtestLoadArgs": {
           "description": "Extra command-line arguments passed to CTest at load time",
           "type": "string",
