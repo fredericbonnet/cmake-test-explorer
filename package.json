@@ -6,10 +6,11 @@
   "author": "Frédéric Bonnet <fredericbonnet@free.fr>",
   "contributors": [
     "Frédéric Bonnet <fredericbonnet@free.fr>",
-    "Andrew Bridge (https://github.com/andrewbridge)"
+    "Andrew Bridge (https://github.com/andrewbridge)",
+    "Maciej Dems (https://github.com/macdems)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
@@ -86,7 +87,7 @@
           "scope": "resource"
         },
         "cmakeExplorer.parallelJobs": {
-          "description": "The number of parallel test jobs (use zero to use the value of cmake.ctest.parallelJobs)",
+          "description": "Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable)",
           "type": "integer",
           "default": 0,
           "scope": "resource"

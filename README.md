@@ -22,6 +22,7 @@ Run your [CMake](https://cmake.org) tests using the [Test Explorer UI](https://m
 | `cmakeExplorer.buildConfig`        | Name of the CMake build configuration. Can be set to any standard or custom configuration name (e.g. `Default`, `Release`, `RelWithDebInfo`, `MinSizeRel` ). Case-insensitive. Defaults to empty, i.e. no specific configuration. |
 | `cmakeExplorer.cmakeIntegration`   | Integrate with the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension for additional variables. See [Variable substitution](#variable-substitution) for more info.                |
 | `cmakeExplorer.debugConfig`        | Custom debug configuration to use (empty for default). See [Debugging](#debugging) for more info.                                                                                                                                 |
+| `cmakeExplorer.parallelJobs`       | Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable). Defaults to zero. See [Parallel test jobs](#parallel-test-jobs) for more info.                                                              |
 | `cmakeExplorer.extraCtestLoadArgs` | Extra command-line arguments passed to CTest at load time. For example, `-R foo` will only load the tests containing the string `foo`. Defaults to empty.                                                                         |
 | `cmakeExplorer.extraCtestRunArgs`  | Extra command-line arguments passed to CTest at run time. For example, `-V` will enable verbose output from tests. Defaults to empty.                                                                                             |
 
@@ -104,3 +105,20 @@ to "`myCustomDebugConfig`" :
   }
 }
 ```
+
+## Parallel test jobs
+
+The extension can run test jobs in parallel. The maximum number of jobs to run
+is the first non-zero value in the following order:
+
+- The `cmakeExplorer.parallelJobs` settings (see [Configuration](#configuration))
+- The `cmake.ctest.parallelJobs` then `cmake.parallelJobs` settings if the
+  [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
+  extension is installed
+- The number of processors on the machine
+
+A negative value will disable parallel execution.
+
+Note that job scheduling is performed by the extension itself and not by CTest
+(e.g. using the `CTEST_PARALLEL_LEVEL` environment variable or the
+`-j|--parallel` command-line option).
