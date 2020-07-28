@@ -149,12 +149,34 @@ export class CmakeAdapter implements TestAdapter {
       tests,
     });
 
-    try {
-      for (const id of tests) {
-        await this.runTest(id);
+    const runAll = tests.length == 1 && tests[0] === ROOT_SUITE_ID;
+    if (runAll) {
+      try {
+        this.testStatesEmitter.fire(<TestSuiteEvent>{
+          type: 'suite',
+          suite: ROOT_SUITE_ID,
+          state: 'running',
+        });
+        await this.runTests(this.cmakeTests.map((test) => test.name));
+        this.testStatesEmitter.fire(<TestSuiteEvent>{
+          type: 'suite',
+          suite: ROOT_SUITE_ID,
+          state: 'completed',
+        });
+      } catch (e) {
+        this.testStatesEmitter.fire(<TestSuiteEvent>{
+          type: 'suite',
+          suite: ROOT_SUITE_ID,
+          state: 'errored',
+          message: e.toString(),
+        });
       }
-    } catch (e) {
-      // Fail silently
+    } else {
+      try {
+        await this.runTests(tests);
+      } catch (e) {
+        // Fail silently
+      }
     }
 
     this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
@@ -242,9 +264,31 @@ export class CmakeAdapter implements TestAdapter {
   }
 
   /**
-   * Run a single test or test suite
+   * Run tests
    *
-   * @param id Test or suite ID
+   * @param tests Test IDs
+   */
+  private async runTests(tests: string[]) {
+    let parallelJobs = this.getParallelJobs();
+    const jobs = [];
+    for (const test of tests) {
+      const run = this.runTest(test);
+      jobs.push(run);
+      const cleanup = () =>
+        this.runningTests.splice(this.runningTests.indexOf(running), 1);
+      const running: any = run.catch(cleanup).then(cleanup);
+      this.runningTests.push(running);
+      while (this.runningTests.length >= parallelJobs) {
+        await Promise.race(this.runningTests);
+      }
+    }
+    await Promise.all(jobs);
+  }
+
+  /**
+   * Run a single test
+   *
+   * @param id Test ID
    */
   private async runTest(id: string) {
     if (this.state === 'cancelled') {
@@ -252,63 +296,6 @@ export class CmakeAdapter implements TestAdapter {
       this.retireEmitter.fire(<RetireEvent>{ tests: [id] });
       return;
     }
-
-    const config = vscode.workspace.getConfiguration(
-      'cmakeExplorer',
-      this.workspaceFolder.uri
-    );
-
-    if (id === ROOT_SUITE_ID) {
-      // Run the whole test suite
-
-      let parallelJobs = config.get<number>('parallelJobs');
-      if (!parallelJobs) {
-        const cmakeConfig = vscode.workspace.getConfiguration(
-          'cmake',
-          this.workspaceFolder.uri
-        );
-        parallelJobs = cmakeConfig.get<number>('ctest.parallelJobs');
-        if (!parallelJobs) {
-          parallelJobs = cmakeConfig.get<number>('parallelJobs');
-          if (!parallelJobs) {
-            parallelJobs = os.cpus().length;
-          }
-        }
-      }
-      if (parallelJobs < 1) parallelJobs = 1;
-
-      this.testStatesEmitter.fire(<TestSuiteEvent>{
-        type: 'suite',
-        suite: id,
-        state: 'running',
-      });
-
-      const tests = [];
-      for (const test of this.cmakeTests) {
-        const run = this.runTest(test.name);
-        tests.push(run);
-        const cleanup = () =>
-          this.runningTests.splice(this.runningTests.indexOf(running), 1);
-        const running: any = run.catch(cleanup).then(cleanup);
-        this.runningTests.push(running);
-        while (this.runningTests.length >= parallelJobs) {
-          await Promise.race(this.runningTests);
-        }
-      }
-      await Promise.all(tests);
-
-      this.testStatesEmitter.fire(<TestSuiteEvent>{
-        type: 'suite',
-        suite: id,
-        state: 'completed',
-      });
-
-      return;
-    }
-
-    //
-    // Single test
-    //
 
     const test = this.cmakeTests.find((test) => test.name === id);
     if (!test) {
@@ -495,5 +482,32 @@ export class CmakeAdapter implements TestAdapter {
       }
     }
     return substitutionMap;
+  }
+
+  /**
+   * Get number of jobs to run in parallel
+   */
+  private getParallelJobs() {
+    const config = vscode.workspace.getConfiguration(
+      'cmakeExplorer',
+      this.workspaceFolder.uri
+    );
+
+    let parallelJobs = config.get<number>('parallelJobs');
+    if (!parallelJobs) {
+      const cmakeConfig = vscode.workspace.getConfiguration(
+        'cmake',
+        this.workspaceFolder.uri
+      );
+      parallelJobs = cmakeConfig.get<number>('ctest.parallelJobs');
+      if (!parallelJobs) {
+        parallelJobs = cmakeConfig.get<number>('parallelJobs');
+        if (!parallelJobs) {
+          parallelJobs = os.cpus().length;
+        }
+      }
+    }
+    if (parallelJobs < 1) parallelJobs = 1;
+    return parallelJobs;
   }
 }
