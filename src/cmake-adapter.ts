@@ -54,7 +54,7 @@ export class CmakeAdapter implements TestAdapter {
   } = {};
 
   /** Currently running tests */
-  private runningTests: Promise<void>[] = [];
+  private runningTests: Set<Promise<void>> = new Set();
 
   /** Currently debugged test config */
   private debuggedTestConfig?: Partial<vscode.DebugConfiguration>;
@@ -270,19 +270,16 @@ export class CmakeAdapter implements TestAdapter {
    */
   private async runTests(tests: string[]) {
     let parallelJobs = this.getParallelJobs();
-    const jobs = [];
     for (const test of tests) {
-      const run = this.runTest(test);
-      jobs.push(run);
-      const cleanup = () =>
-        this.runningTests.splice(this.runningTests.indexOf(running), 1);
-      const running: any = run.catch(cleanup).then(cleanup);
-      this.runningTests.push(running);
-      while (this.runningTests.length >= parallelJobs) {
+      const run = this.runTest(test).finally(() =>
+        this.runningTests.delete(run)
+      );
+      this.runningTests.add(run);
+      while (this.runningTests.size >= parallelJobs) {
         await Promise.race(this.runningTests);
       }
     }
-    await Promise.all(jobs);
+    await Promise.all(this.runningTests);
   }
 
   /**
