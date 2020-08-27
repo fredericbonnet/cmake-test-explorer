@@ -100,11 +100,13 @@ export function loadCmakeTests(
  * Schedule a single CMake test
  *
  * @param ctestPath CTest command path
+ * @param cwd CMake build directory to run the command within
  * @param test Test to run
  * @param extraArgs Extra arguments passed to CTest
  */
 export function scheduleCmakeTest(
   ctestPath: string,
+  cwd: string,
   test: CmakeTestInfo,
   extraArgs: string = ''
 ): CmakeTestProcess {
@@ -112,10 +114,6 @@ export function scheduleCmakeTest(
   const args = split(extraArgs);
 
   const { name, config } = test;
-  const WORKING_DIRECTORY = test.properties.find(
-    (p) => p.name === 'WORKING_DIRECTORY'
-  );
-  const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
   const testProcess = child_process.spawn(
     ctestPath,
     [
@@ -179,15 +177,17 @@ export function cancelCmakeTest(testProcess: CmakeTestProcess) {
  * Run a single CMake test
  *
  * @param ctestPath CTest command path
+ * @param cwd CMake build directory to run the command within
  * @param test Test to run
  * @param extraArgs Extra arguments passed to CTest
  */
 export function runCmakeTest(
   ctestPath: string,
+  cwd: string,
   test: CmakeTestInfo,
   extraArgs: string = ''
 ): Promise<CmakeTestResult> {
-  const testProcess = scheduleCmakeTest(ctestPath, test, extraArgs);
+  const testProcess = scheduleCmakeTest(ctestPath, cwd, test, extraArgs);
   return executeCmakeTest(testProcess);
 }
 

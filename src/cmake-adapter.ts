@@ -312,11 +312,17 @@ export class CmakeAdapter implements TestAdapter {
       state: 'running',
     });
     try {
-      const [extraCtestRunArgs] = await this.getConfigStrings([
+      // Get & substitute config settings
+      const [buildDir, extraCtestRunArgs] = await this.getConfigStrings([
+        'buildDir',
         'extraCtestRunArgs',
       ]);
+
+      // Schedule & execute test
+      const cwd = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
       this.currentTestProcessList[id] = scheduleCmakeTest(
         this.ctestPath,
+        cwd,
         test,
         extraCtestRunArgs
       );
