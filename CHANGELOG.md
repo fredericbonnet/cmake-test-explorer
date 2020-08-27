@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add possibility to group tests based on delimiter in their names
+
 ### Fixed
 
 - Fix issue #17 for tests with non-default `WORKING_DIRECTORY`
