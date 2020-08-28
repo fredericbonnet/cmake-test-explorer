@@ -34,7 +34,7 @@ import {
 /** Special ID value for the root suite */
 const ROOT_SUITE_ID = '*';
 
-/** Suffix for suites */
+/** Suffix for suite IDS, used to distinguish suite IDs from test IDs */
 const SUITE_SUFFIX = '*';
 
 /**
@@ -228,12 +228,12 @@ export class CmakeAdapter implements TestAdapter {
         buildDir,
         buildConfig,
         extraCtestLoadArgs,
-        suiteDelimiter
+        suiteDelimiter,
       ] = await this.getConfigStrings([
         'buildDir',
         'buildConfig',
         'extraCtestLoadArgs',
-        'suiteDelimiter'
+        'suiteDelimiter',
       ]);
 
       // Load CTest test list
@@ -246,53 +246,56 @@ export class CmakeAdapter implements TestAdapter {
         extraCtestLoadArgs
       );
 
+      // Convert to Text Explorer format
+      const rootSuite: TestSuiteInfo = {
+        type: 'suite',
+        id: ROOT_SUITE_ID,
+        label: 'CMake', // the label of the root node should be the name of the testing framework
+        children: [],
+      };
       if (!suiteDelimiter) {
-        // Convert to Text Explorer format: one top-level suite containing all tests
-        // CTest doesn't support nested tests and qe do not split them ourselves
-        const suite: TestSuiteInfo = {
-          type: 'suite',
-          id: ROOT_SUITE_ID,
-          label: 'CMake', // the label of the root node should be the name of the testing framework
-          children: this.cmakeTests.map((test) => ({
-            type: 'test',
-            id: test.name,
-            label: test.name,
-          })),
-        };
-        return suite;
+        // CTest doesn't support nested tests and we do not split them ourselves
+        // Create one top-level suite containing all tests
+        rootSuite.children = this.cmakeTests.map((test) => ({
+          type: 'test',
+          id: test.name,
+          label: test.name,
+        }));
+        return rootSuite;
       } else {
-        const rootSuite: TestSuiteInfo = {
-          type: 'suite',
-          id: ROOT_SUITE_ID,
-          label: 'CMake', // the label of the root node should be the name of the testing framework
-          children: [],
-        };
+        // Create a hierarchical suite by splitting CTest names
         for (let test of this.cmakeTests) {
           const path = test.name.split(suiteDelimiter);
-          const testName = path.pop() || "undefined";
+          const testName = path.pop() || 'undefined';
           let suite = rootSuite;
-          let currentId = "";
+          let currentId = '';
           for (let name of path) {
             currentId += name + suiteDelimiter;
-            let suit = suite.children.find((item) => item.type == 'suite' && item.id === currentId + SUITE_SUFFIX);
-            if (!suit) {
-              suit = {
+            let childSuite = suite.children.find(
+              (item) =>
+                item.type == 'suite' && item.id === currentId + SUITE_SUFFIX
+            );
+            if (!childSuite) {
+              childSuite = {
                 type: 'suite',
                 id: currentId + SUITE_SUFFIX,
                 label: name,
                 children: [],
-                tooltip: currentId.substr(0, currentId.length - suiteDelimiter.length)
+                tooltip: currentId.substr(
+                  0,
+                  currentId.length - suiteDelimiter.length
+                ),
               };
-              suite.children.push(suit);
+              suite.children.push(childSuite);
             }
-            suite = suit as TestSuiteInfo;
+            suite = childSuite as TestSuiteInfo;
           }
           const testInfo: TestInfo = {
             type: 'test',
             id: test.name,
             label: testName,
             description: test.name,
-            tooltip: test.name
+            tooltip: test.name,
           };
           suite.children.push(testInfo);
         }
@@ -314,16 +317,17 @@ export class CmakeAdapter implements TestAdapter {
    * @param ids Test IDs
    */
   private async runTests(ids: string[]) {
-    const config = vscode.workspace.getConfiguration(
-      'cmakeExplorer',
-      this.workspaceFolder.uri
-    );
-    const suiteDdelimiter = config.get<string>("suiteDelimiter");
+    const [suiteDelimiter] = await this.getConfigStrings(['suiteDelimiter']);
     let parallelJobs = this.getParallelJobs();
     const allTests = this.cmakeTests.map((test) => test.name);
     for (const id of ids) {
-      const tests = (suiteDdelimiter && id.endsWith(suiteDdelimiter + SUITE_SUFFIX))?
-          allTests.filter((test) => test.startsWith(id.substr(0, id.length - SUITE_SUFFIX.length))) : [id];
+      // Include all suite tests if given a suite ID
+      const tests =
+        suiteDelimiter && id.endsWith(suiteDelimiter + SUITE_SUFFIX)
+          ? allTests.filter((test) =>
+              test.startsWith(id.substr(0, id.length - SUITE_SUFFIX.length))
+            )
+          : [id];
       for (const test of tests) {
         const run = this.runTest(test).finally(() =>
           this.runningTests.delete(run)
