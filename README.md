@@ -123,3 +123,36 @@ A negative value will disable parallel execution.
 Note that job scheduling is performed by the extension itself and not by CTest
 (e.g. using the `CTEST_PARALLEL_LEVEL` environment variable or the
 `-j|--parallel` command-line option).
+
+## Troubleshooting
+
+First, make sure that CTest works from the command line. Some issues come from
+the CTest configuration and not the extension itself. See issues #10 and #14 for
+examples of such cases.
+
+### The Test Explorer panel displays an error
+
+Clicking on the error message in the Test Explorer panel should open the log
+panel with the output of the CTest command used by the extension to load the
+test list.
+
+- `SyntaxError: Unexpected token T in JSON at position 0`
+
+  The extension requires CTest option `--show-only=json-v1` to load the test
+  list. This option was introduced with CMake version 3.14. Make sure to use a
+  version that supports this flag. See issue #2.
+
+- `Error: CMake cache file /path/to/project/${buildDirectory}/CMakeCache.txt does not exist`
+
+  The `cmakeExplorer.cmakeIntegration` flag is enabled by default. This adds support
+  for extra variables in other settings (See
+  [Variable substitution](#variable-substitution) for more info). If the
+  extension is not installed or active then these variables are not substituted.
+  You can activate the extension's log panel in the settings for more details.
+
+### The Test Explorer panel shows no error but the test list is empty
+
+Make sure that the `cmakeExplorer.buildDir` is properly configured. By default
+its value is empty, and in this case the extension shows no error if it fails
+to find the `CMakeCache.txt` file, in order not to clutter the Test Explorer
+panel for projects that don't use CMake.
