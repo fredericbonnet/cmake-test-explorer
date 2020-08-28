@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add possibility to group tests based on delimiter in their names
 
+### Changed
+
+- No longer wait for CMake Tools during activation. This prevents issues with
+  tests failing to load when CMake Tools integration is activated but the
+  extension is not installed or activated (see issue #15).
+
 ### Fixed
 
 - Fix issue #17 for tests with non-default `WORKING_DIRECTORY`

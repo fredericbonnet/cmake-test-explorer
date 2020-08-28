@@ -25,31 +25,21 @@ export async function activate(context: vscode.ExtensionContext) {
     workspaceFolder.uri
   );
 
-  const awaitCmake = config.get<boolean>('cmakeIntegration') || false;
+  const cmakeIntegration = config.get<boolean>('cmakeIntegration') || false;
 
-  if (awaitCmake) {
-    let cmakeExtension = vscode.extensions.getExtension('ms-vscode.cmake-tools');
-    // Wait to install
+  if (cmakeIntegration) {
+    // Check for CMake Tools extension
+    let cmakeExtension = vscode.extensions.getExtension(
+      'ms-vscode.cmake-tools'
+    );
     if (!cmakeExtension) {
-      log.info(`CMake extension was not found, waiting until it is installed and enabled.`);
-      await new Promise((resolve) => {
-        vscode.extensions.onDidChange(() => {
-          cmakeExtension = vscode.extensions.getExtension('ms-vscode.cmake-tools');
-          if (cmakeExtension) resolve();
-        })
-      });
-    }
-    // Wait to activate
-    if (cmakeExtension && !cmakeExtension.isActive) {
-      log.info(`CMake extension is not activated, waiting until it activates.`);
-      await new Promise((resolve) => {
-        const check = () => {
-          if (!cmakeExtension) throw 'CMake extension still undefined'; // This shouldn't happen
-          if (cmakeExtension.isActive) return resolve();
-          setTimeout(check, 1000);
-        }
-        check();
-      });
+      log.warn(
+        `CMake integration is enabled but the CMake Tools extension is not installed`
+      );
+    } else if (!cmakeExtension.isActive) {
+      log.warn(
+        `CMake integration is enabled but the CMake Tools extension is not active`
+      );
     }
   }
 
