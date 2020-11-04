@@ -60,9 +60,6 @@ export class CmakeAdapter implements TestAdapter {
   /** Currently running tests */
   private runningTests: Set<Promise<void>> = new Set();
 
-  /** Currently debugged test config */
-  private debuggedTestConfig?: Partial<vscode.DebugConfiguration>;
-
   //
   // TestAdapter implementations
   //
@@ -93,27 +90,9 @@ export class CmakeAdapter implements TestAdapter {
 
   constructor(
     public readonly workspaceFolder: vscode.WorkspaceFolder,
-    private readonly log: Log,
-    context: vscode.ExtensionContext
+    private readonly log: Log
   ) {
     this.log.info('Initializing CMake test adapter');
-
-    // Register a DebugConfigurationProvider to combine global and
-    // test-specific debug configurations (see debugTest)
-    context.subscriptions.push(
-      vscode.debug.registerDebugConfigurationProvider('cppdbg', {
-        resolveDebugConfiguration: (
-          folder: vscode.WorkspaceFolder | undefined,
-          config: vscode.DebugConfiguration,
-          token?: vscode.CancellationToken
-        ): vscode.ProviderResult<vscode.DebugConfiguration> => {
-          return {
-            ...config,
-            ...this.debuggedTestConfig,
-          };
-        },
-      })
-    );
 
     this.disposables.push(this.testsEmitter);
     this.disposables.push(this.testStatesEmitter);
@@ -429,14 +408,31 @@ export class CmakeAdapter implements TestAdapter {
 
     // Debug test
     this.log.info(`Debugging CMake test ${id}`);
+    const disposables: vscode.Disposable[] = [];
     try {
-      // Get test config
+      // Get global debug config
       const [debugConfig] = await this.getConfigStrings(['debugConfig']);
       const defaultConfig = this.getDefaultDebugConfiguration();
 
-      // Remember test-specific config for the DebugConfigurationProvider registered
-      // in the constructor (method resolveDebugConfiguration)
-      this.debuggedTestConfig = getCmakeTestDebugConfiguration(test);
+      // Get test-specific debug config
+      const debuggedTestConfig = getCmakeTestDebugConfiguration(test);
+
+      // Register a DebugConfigurationProvider to combine global and
+      // test-specific debug configurations before the debugging session starts
+      disposables.push(
+        vscode.debug.registerDebugConfigurationProvider('*', {
+          resolveDebugConfiguration: (
+            folder: vscode.WorkspaceFolder | undefined,
+            config: vscode.DebugConfiguration,
+            token?: vscode.CancellationToken
+          ): vscode.ProviderResult<vscode.DebugConfiguration> => {
+            return {
+              ...config,
+              ...debuggedTestConfig,
+            };
+          },
+        })
+      );
 
       // Start the debugging session. The actual debug config will combine the
       // global and test-specific values
@@ -447,7 +443,7 @@ export class CmakeAdapter implements TestAdapter {
     } catch (e) {
       this.log.error(`Error debugging CMake test ${id}`, e.toString());
     } finally {
-      this.debuggedTestConfig = undefined;
+      disposables.forEach((disposable) => disposable.dispose());
     }
   }
 
