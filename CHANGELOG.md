@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2020-11-04
+
+### Fixed
+
+- Fix debug configuration handling with debuggers other than 'cppdbg' (see issue
+  #22)
+
 ## [0.10.0] - 2020-08-28
 
 ### Added
@@ -92,7 +99,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.10.0...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.7.0...v0.8.0
