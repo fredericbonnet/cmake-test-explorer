@@ -13,6 +13,6 @@ export interface CmakeTestInfo {
   command: string[];
   properties: {
     name: string;
-    value: string;
+    value: string | string[];
   }[];
 }

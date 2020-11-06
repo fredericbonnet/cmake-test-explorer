@@ -109,6 +109,18 @@
           "default": "",
           "scope": "resource"
         },
+        "cmakeExplorer.testFileVar": {
+          "description": "CTest environment variable defined for a test, giving the path of the source file containing the test",
+          "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
+        "cmakeExplorer.testLineVar": {
+          "description": "CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known)",
+          "type": "string",
+          "default": "",
+          "scope": "resource"
+        },
         "cmakeExplorer.logpanel": {
           "description": "Write diagnotic logs to an output panel",
           "type": "boolean",

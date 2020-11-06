@@ -208,11 +208,15 @@ export class CmakeAdapter implements TestAdapter {
         buildConfig,
         extraCtestLoadArgs,
         suiteDelimiter,
+        testFileVar,
+        testLineVar,
       ] = await this.getConfigStrings([
         'buildDir',
         'buildConfig',
         'extraCtestLoadArgs',
         'suiteDelimiter',
+        'testFileVar',
+        'testLineVar',
       ]);
 
       // Load CTest test list
@@ -225,7 +229,7 @@ export class CmakeAdapter implements TestAdapter {
         extraCtestLoadArgs
       );
 
-      // Convert to Text Explorer format
+      // Convert to Test Explorer format
       const rootSuite: TestSuiteInfo = {
         type: 'suite',
         id: ROOT_SUITE_ID,
@@ -239,6 +243,7 @@ export class CmakeAdapter implements TestAdapter {
           type: 'test',
           id: test.name,
           label: test.name,
+          ...getTestFileInfo(test, testFileVar, testLineVar),
         }));
         return rootSuite;
       } else {
@@ -275,6 +280,7 @@ export class CmakeAdapter implements TestAdapter {
             label: testName,
             description: test.name,
             tooltip: test.name,
+            ...getTestFileInfo(test, testFileVar, testLineVar),
           };
           suite.children.push(testInfo);
         }
@@ -569,3 +575,73 @@ export class CmakeAdapter implements TestAdapter {
     return parallelJobs;
   }
 }
+
+/**
+ * Get test file/line number info from CMake test info
+ *
+ * @param test CMake test info
+ * @param testFileVar CTest environment variable for file path
+ * @param testLineVar CTest environment variable for line number
+ */
+const getTestFileInfo = (
+  test: CmakeTestInfo,
+  testFileVar: string,
+  testLineVar: string
+) => {
+  const variables = getTestEnvironmentVariables(test);
+  if (!variables) return {};
+
+  return {
+    file: getFileFromEnvironment(variables, testFileVar),
+    line: getLineFromEnvironment(variables, testLineVar),
+  };
+};
+
+/**
+ * Get environment variables defined for a CMake test
+ *
+ * @param test CMake test info
+ */
+const getTestEnvironmentVariables = (test: CmakeTestInfo) => {
+  const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
+  if (ENVIRONMENT) return ENVIRONMENT.value as string[];
+  return;
+};
+
+/**
+ * Get file path from environment variables
+ *
+ * @param variables Array of environment variables in the form `NAME=VALUE`
+ * @param varname Variable name to get value for
+ */
+const getFileFromEnvironment = (variables: string[], fileVar: string) => {
+  return getVariableValue(variables, fileVar);
+};
+
+/**
+ * Get line number from environment variables
+ *
+ * @param variables Array of environment variables in the form `NAME=VALUE`
+ * @param varname Variable name to get value for
+ */
+const getLineFromEnvironment = (variables: string[], varname: string) => {
+  const value = getVariableValue(variables, varname);
+  if (value) return Number.parseInt(value) - 1;
+  return;
+};
+
+/**
+ * Extract value from environment variables
+ *
+ * @param variables Array of environment variables in the form `NAME=VALUE`
+ * @param varname Variable name to get value for
+ */
+const getVariableValue = (variables: string[], varname: string) => {
+  if (!varname) return;
+  const varRe = new RegExp(`^${varname}=(.*)$`);
+  for (let variable of variables) {
+    const match = variable.match(varRe);
+    if (match) return match[1];
+  }
+  return;
+};
