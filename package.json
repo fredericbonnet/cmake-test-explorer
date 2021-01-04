@@ -38,11 +38,13 @@
   },
   "dependencies": {
     "split-cmd": "^1.0.1",
+    "split2": "^3.2.2",
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.9.0",
     "vscode-test-adapter-util": "^0.7.1"
   },
   "devDependencies": {
+    "@types/split2": "^2.1.6",
     "@types/vscode": "^1.47.0",
     "prettier": "^2.0.5",
     "typescript": "^3.5.3",

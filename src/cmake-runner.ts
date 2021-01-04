@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as split2 from 'split2';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
@@ -17,6 +18,46 @@ const CMAKE_CACHE_FILE = 'CMakeCache.txt';
 
 /** Regexp for CTest path in CMake cache file */
 const CTEST_RE = /^CMAKE_CTEST_COMMAND:INTERNAL=(.*)$/m;
+
+/** Regexp for test start line */
+const CTEST_START_RE = /^\s+Start\s+(\d+): (\S+)/;
+
+/** Regexp for test output line */
+const CTEST_OUTPUT_RE = /^(\d+): .*$/;
+
+/** Regexp for test passed line */
+const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+   Passed/;
+
+/** Regexp for test failed line */
+const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*Failed/;
+
+/** Generic test event */
+export type CmakeTestEvent =
+  | CmakeTestStartEvent
+  | CmakeTestOutputEvent
+  | CmakeTestEndEvent;
+
+/** Test start event */
+export interface CmakeTestStartEvent {
+  type: 'start';
+  index: number;
+  name: string;
+}
+
+/** Test output event */
+export interface CmakeTestOutputEvent {
+  type: 'output';
+  index: number;
+  line: string;
+}
+
+/** Test end event */
+export interface CmakeTestEndEvent {
+  type: 'end';
+  index: number;
+  name: string;
+  success: boolean;
+}
 
 /** Error thrown when CMake cache file is not found in build dir */
 export class CacheNotFoundError extends Error {
@@ -71,25 +112,22 @@ export function loadCmakeTests(
 
       // Capture result on stdout
       const out: string[] = [];
-      ctestProcess.stdout.on('data', (data) => {
-        out.push(data);
-      });
-
-      // The 'exit' event is always sent even if the child process crashes or is
-      // killed so we can safely resolve/reject the promise from there
-      ctestProcess.once('exit', () => {
-        try {
-          const data = JSON.parse(out.join(''));
-          const tests: CmakeTestInfo[] = data.tests;
-          resolve(tests);
-        } catch {
-          reject(
-            new Error(
-              `Error parsing test list - Make sure to use a version of CTest >= 3.14 that supports option '--show-only=json-v1'`
-            )
-          );
-        }
-      });
+      ctestProcess.stdout
+        .on('data', (data) => out.push(data))
+        .on('end', () => {
+          try {
+            const data = JSON.parse(out.join(''));
+            const tests: CmakeTestInfo[] = data.tests;
+            resolve(tests as CmakeTestInfo[]);
+          } catch (e) {
+            reject(
+              new Error(
+                `Error parsing test list - Make sure to use a version of CTest >= 3.14 that supports option '--show-only=json-v1'`
+              )
+            );
+          }
+        })
+        .on('error', (error: Error) => reject(error));
     } catch (e) {
       reject(e);
     }
@@ -97,67 +135,89 @@ export function loadCmakeTests(
 }
 
 /**
- * Schedule a single CMake test
+ * Schedule a CMake test process
  *
  * @param ctestPath CTest command path
  * @param cwd CMake build directory to run the command within
- * @param test Test to run
+ * @param testIndexes Test indexes to run (empty for all)
+ * @param parallelJobs Number of jobs to run in parallel
  * @param extraArgs Extra arguments passed to CTest
  */
-export function scheduleCmakeTest(
+export function scheduleCmakeTestProcess(
   ctestPath: string,
   cwd: string,
-  test: CmakeTestInfo,
+  testIndexes: number[],
+  parallelJobs: number,
   extraArgs: string = ''
 ): CmakeTestProcess {
+  // Build options
+  const testList = testIndexes.length
+    ? ['-I', `0,0,0,${testIndexes.join(',')}`]
+    : [];
+  const jobs = parallelJobs > 1 ? ['-j', parallelJobs] : [];
+
   // Split args string into array for spawn
   const args = split(extraArgs);
 
-  const { name, config } = test;
   const testProcess = child_process.spawn(
     ctestPath,
-    [
-      '-R',
-      `^${name}$`,
-      '--output-on-failure',
-      ...(!!config ? ['-C', config] : []),
-      ...args,
-    ],
+    ['-V', ...jobs, ...testList, ...args],
     { cwd }
   );
   if (!testProcess.pid) {
     // Something failed, e.g. the executable or cwd doesn't exist
-    throw new Error(`Cannot run test ${name}`);
+    throw new Error(`Cannot run tests`);
   }
 
   return testProcess;
 }
 
 /**
- * Execute a previously scheduled CMake test
+ * Execute a previously scheduled CMake test process
  *
  * @param testProcess Scheduled test process
+ * @param onEvent Event callback
  */
-export function executeCmakeTest(
-  testProcess: CmakeTestProcess
+export function executeCmakeTestProcess(
+  testProcess: CmakeTestProcess,
+  onEvent: (event: CmakeTestEvent) => void
 ): Promise<CmakeTestResult> {
   return new Promise<CmakeTestResult>((resolve, reject) => {
     try {
       // Capture result on stdout
-      const out: string[] = [];
-      testProcess.stdout.on('data', (data) => {
-        out.push(data);
-      });
-
-      // The 'exit' event is always sent even if the child process crashes or is
-      // killed so we can safely resolve/reject the promise from there
-      testProcess.once('exit', (code) => {
-        const result: CmakeTestResult = {
-          code,
-          out: out.length ? out.join('') : undefined,
-        };
-        resolve(result);
-      });
+      testProcess.stdout
+        .pipe(split2())
+        .on('data', (line: string) => {
+          // Parse each output line and raise matching events
+          let matches;
+          if ((matches = line.match(CTEST_START_RE))) {
+            // Test start
+            const index = Number.parseInt(matches[1]);
+            const name = matches[2];
+            onEvent({ type: 'start', index, name });
+            onEvent({ type: 'output', index, line });
+          } else if ((matches = line.match(CTEST_OUTPUT_RE))) {
+            // Test output
+            const index = Number.parseInt(matches[1]);
+            onEvent({ type: 'output', index, line });
+          } else if ((matches = line.match(CTEST_PASSED_RE))) {
+            // Test passed
+            const index = Number.parseInt(matches[1]);
+            const name = matches[2];
+            onEvent({ type: 'output', index, line });
+            onEvent({ type: 'end', index, name, success: true });
+          } else if ((matches = line.match(CTEST_FAILED_RE))) {
+            // Test failed
+            const index = Number.parseInt(matches[1]);
+            const name = matches[2];
+            onEvent({ type: 'output', index, line });
+            onEvent({ type: 'end', index, name, success: false });
+          }
+        })
+        .on('end', () => {
+          // All done
+          resolve({ code: testProcess.exitCode });
+        });
     } catch (e) {
       reject(e);
     }
@@ -165,30 +225,12 @@ export function executeCmakeTest(
 }
 
 /**
- * Cancel a previously scheduled CMake test
+ * Cancel a previously scheduled CMake test process
  *
  * @param testProcess Scheduled test process
  */
-export function cancelCmakeTest(testProcess: CmakeTestProcess) {
+export function cancelCmakeTestProcess(testProcess: CmakeTestProcess) {
   testProcess.kill();
-}
-
-/**
- * Run a single CMake test
- *
- * @param ctestPath CTest command path
- * @param cwd CMake build directory to run the command within
- * @param test Test to run
- * @param extraArgs Extra arguments passed to CTest
- */
-export function runCmakeTest(
-  ctestPath: string,
-  cwd: string,
-  test: CmakeTestInfo,
-  extraArgs: string = ''
-): Promise<CmakeTestResult> {
-  const testProcess = scheduleCmakeTest(ctestPath, cwd, test, extraArgs);
-  return executeCmakeTest(testProcess);
 }
 
 /**

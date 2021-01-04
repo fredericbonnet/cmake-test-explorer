@@ -19,16 +19,16 @@ import {
 } from 'vscode-test-adapter-api';
 import { Log } from 'vscode-test-adapter-util';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
-import { CmakeTestResult } from './interfaces/cmake-test-result';
 import { CmakeTestProcess } from './interfaces/cmake-test-process';
 import {
   loadCmakeTests,
-  scheduleCmakeTest,
-  executeCmakeTest,
-  cancelCmakeTest,
+  scheduleCmakeTestProcess,
+  executeCmakeTestProcess,
+  cancelCmakeTestProcess,
   getCmakeTestDebugConfiguration,
   CacheNotFoundError,
   getCtestPath,
+  CmakeTestEvent,
 } from './cmake-runner';
 
 /** Special ID value for the root suite */
@@ -52,13 +52,8 @@ export class CmakeAdapter implements TestAdapter {
   /** State */
   private state: 'idle' | 'loading' | 'running' | 'cancelled' = 'idle';
 
-  /** Currently running tests */
-  private currentTestProcessList: {
-    [id: string]: CmakeTestProcess;
-  } = {};
-
-  /** Currently running tests */
-  private runningTests: Set<Promise<void>> = new Set();
+  /** Currently running test process */
+  private currentTestProcess?: CmakeTestProcess;
 
   //
   // TestAdapter implementations
@@ -140,7 +135,7 @@ export class CmakeAdapter implements TestAdapter {
           suite: ROOT_SUITE_ID,
           state: 'running',
         });
-        await this.runTests(this.cmakeTests.map((test) => test.name));
+        await this.runTests([]);
         this.testStatesEmitter.fire(<TestSuiteEvent>{
           type: 'suite',
           suite: ROOT_SUITE_ID,
@@ -181,9 +176,8 @@ export class CmakeAdapter implements TestAdapter {
   cancel(): void {
     if (this.state !== 'running') return; // ignore
 
-    for (const proc of Object.values(this.currentTestProcessList)) {
-      cancelCmakeTest(proc);
-    }
+    if (this.currentTestProcess)
+      cancelCmakeTestProcess(this.currentTestProcess);
 
     // State will eventually transition to idle once the run loop completes
     this.state = 'cancelled';
@@ -299,96 +293,110 @@ export class CmakeAdapter implements TestAdapter {
   /**
    * Run tests
    *
-   * @param ids Test IDs
+   * @param tests Test IDs (empty for all)
    */
-  private async runTests(ids: string[]) {
-    const [suiteDelimiter] = await this.getConfigStrings(['suiteDelimiter']);
-    let parallelJobs = this.getParallelJobs();
-    const allTests = this.cmakeTests.map((test) => test.name);
-    for (const id of ids) {
-      // Include all suite tests if given a suite ID
-      const tests =
-        suiteDelimiter && id.endsWith(suiteDelimiter + SUITE_SUFFIX)
-          ? allTests.filter((test) =>
-              test.startsWith(id.substr(0, id.length - SUITE_SUFFIX.length))
-            )
-          : [id];
-      for (const test of tests) {
-        const run = this.runTest(test).finally(() =>
-          this.runningTests.delete(run)
-        );
-        this.runningTests.add(run);
-        while (this.runningTests.size >= parallelJobs) {
-          await Promise.race(this.runningTests);
-        }
-      }
+  private async runTests(tests: string[]) {
+    if (this.state === 'cancelled') {
+      // Test run cancelled, retire tests
+      this.retireEmitter.fire(<RetireEvent>{ tests });
+      return;
     }
-    await Promise.all(this.runningTests);
+
+    try {
+      // Get & substitute config settings
+      const [
+        buildDir,
+        extraCtestRunArgs,
+        suiteDelimiter,
+      ] = await this.getConfigStrings([
+        'buildDir',
+        'extraCtestRunArgs',
+        'suiteDelimiter',
+      ]);
+      const parallelJobs = this.getParallelJobs();
+
+      // Get flat list of test indexes
+      const testIndexes = this.getTestIndexes(tests, suiteDelimiter);
+
+      // Run tests
+      const cwd = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
+      this.currentTestProcess = scheduleCmakeTestProcess(
+        this.ctestPath,
+        cwd,
+        testIndexes,
+        parallelJobs,
+        extraCtestRunArgs
+      );
+      let outputs: string[][] = [];
+      await executeCmakeTestProcess(
+        this.currentTestProcess,
+        (event: CmakeTestEvent) => {
+          switch (event.type) {
+            case 'start':
+              this.testStatesEmitter.fire(<TestEvent>{
+                type: 'test',
+                test: event.name,
+                state: 'running',
+              });
+              break;
+
+            case 'output':
+              if (!outputs[event.index]) outputs[event.index] = [];
+              outputs[event.index].push(event.line);
+              break;
+
+            case 'end':
+              let message = outputs[event.index]
+                ? outputs[event.index].join('\n')
+                : undefined;
+              this.testStatesEmitter.fire(<TestEvent>{
+                type: 'test',
+                test: event.name,
+                state: event.success ? 'passed' : 'failed',
+                message,
+              });
+              break;
+          }
+        }
+      );
+    } finally {
+      this.currentTestProcess = undefined;
+    }
   }
 
   /**
-   * Run a single test
+   * Get flat list of test indexes
    *
-   * @param id Test ID
+   * @param ids Test or suite IDs (empty for all)
+   * @param suiteDelimiter Test suite delimiter
    */
-  private async runTest(id: string) {
-    if (this.state === 'cancelled') {
-      // Test run cancelled, retire test
-      this.retireEmitter.fire(<RetireEvent>{ tests: [id] });
-      return;
+  private getTestIndexes(ids: string[], suiteDelimiter: string) {
+    if (ids.length === 0) {
+      // All tests
+      return [];
     }
 
-    const test = this.cmakeTests.find((test) => test.name === id);
-    if (!test) {
-      // Not found, mark test as skipped.
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: 'skipped',
-      });
-      return;
+    // Build flat test list
+    let tests = [];
+    const allTests = this.cmakeTests.map((test) => test.name);
+    for (const id of ids) {
+      if (suiteDelimiter && id.endsWith(suiteDelimiter + SUITE_SUFFIX)) {
+        // Include whole suite if given a suite ID
+        tests.push(
+          ...allTests.filter((test) =>
+            test.startsWith(id.substr(0, id.length - SUITE_SUFFIX.length))
+          )
+        );
+      } else {
+        // Single test
+        tests.push(id);
+      }
     }
 
-    // Run test
-    this.testStatesEmitter.fire(<TestEvent>{
-      type: 'test',
-      test: id,
-      state: 'running',
-    });
-    try {
-      // Get & substitute config settings
-      const [buildDir, extraCtestRunArgs] = await this.getConfigStrings([
-        'buildDir',
-        'extraCtestRunArgs',
-      ]);
-
-      // Schedule & execute test
-      const cwd = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.currentTestProcessList[id] = scheduleCmakeTest(
-        this.ctestPath,
-        cwd,
-        test,
-        extraCtestRunArgs
-      );
-      const result: CmakeTestResult = await executeCmakeTest(
-        this.currentTestProcessList[id]
-      );
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: result.code ? 'failed' : 'passed',
-        message: result.out,
-      });
-    } catch (e) {
-      this.testStatesEmitter.fire(<TestEvent>{
-        type: 'test',
-        test: id,
-        state: 'errored',
-        message: e.toString(),
-      });
-    } finally {
-      delete this.currentTestProcessList[id];
-    }
+    // Return test indexes
+    return tests.map(
+      (id) => this.cmakeTests.findIndex((test) => test.name === id) + 1
+    );
   }
 
   /**
