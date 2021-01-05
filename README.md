@@ -171,8 +171,7 @@ is the first non-zero value in the following order:
 
 A negative value will disable parallel execution.
 
-Note that job scheduling is performed by the extension itself and not by CTest
-(e.g. using the `CTEST_PARALLEL_LEVEL` environment variable or the
+The extension uses the native CTest parallel execution support (i.e. the
 `-j|--parallel` command-line option).
 
 ## Troubleshooting
