@@ -246,11 +246,13 @@ export function getCmakeTestDebugConfiguration(
     (p) => p.name === 'WORKING_DIRECTORY'
   );
   const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
+  const env = getCmakeTestEnvironmentVariables(test);
   return {
     name: `CTest ${test.name}`,
     program: command,
     args,
     cwd,
+    env,
   };
 }
 
@@ -277,4 +279,22 @@ export function getCtestPath(cwd: string) {
   }
 
   return match[1];
+}
+/**
+ * Get environment variables defined for a CMake test
+ *
+ * @param test CMake test info
+ */
+export function getCmakeTestEnvironmentVariables(test: CmakeTestInfo) {
+  const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
+  if (!ENVIRONMENT) return;
+
+  const value = ENVIRONMENT.value as string[];
+  return value.reduce((acc, v) => {
+    const m = v.match(/^(.*)=(.*)$/);
+    if (m) {
+      acc[m[1]] = m[2];
+    }
+    return acc;
+  }, {} as { [key: string]: string });
 }

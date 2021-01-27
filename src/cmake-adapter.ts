@@ -26,6 +26,7 @@ import {
   executeCmakeTestProcess,
   cancelCmakeTestProcess,
   getCmakeTestDebugConfiguration,
+  getCmakeTestEnvironmentVariables,
   CacheNotFoundError,
   getCtestPath,
   CmakeTestEvent,
@@ -596,60 +597,38 @@ const getTestFileInfo = (
   testFileVar: string,
   testLineVar: string
 ) => {
-  const variables = getTestEnvironmentVariables(test);
-  if (!variables) return {};
+  const env = getCmakeTestEnvironmentVariables(test);
+  if (!env) return {};
 
   return {
-    file: getFileFromEnvironment(variables, testFileVar),
-    line: getLineFromEnvironment(variables, testLineVar),
+    file: getFileFromEnvironment(env, testFileVar),
+    line: getLineFromEnvironment(env, testLineVar),
   };
-};
-
-/**
- * Get environment variables defined for a CMake test
- *
- * @param test CMake test info
- */
-const getTestEnvironmentVariables = (test: CmakeTestInfo) => {
-  const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
-  if (ENVIRONMENT) return ENVIRONMENT.value as string[];
-  return;
 };
 
 /**
  * Get file path from environment variables
  *
- * @param variables Array of environment variables in the form `NAME=VALUE`
+ * @param env Map of environment variables
  * @param varname Variable name to get value for
  */
-const getFileFromEnvironment = (variables: string[], fileVar: string) => {
-  return getVariableValue(variables, fileVar);
-};
+const getFileFromEnvironment = (
+  env: { [key: string]: string },
+  fileVar: string
+) => env[fileVar];
 
 /**
  * Get line number from environment variables
  *
- * @param variables Array of environment variables in the form `NAME=VALUE`
+ * @param env Map of environment variables
  * @param varname Variable name to get value for
  */
-const getLineFromEnvironment = (variables: string[], varname: string) => {
-  const value = getVariableValue(variables, varname);
+const getLineFromEnvironment = (
+  env: { [key: string]: string },
+  varname: string
+) => {
+  const value = env[varname];
+  // Test Explorer expects 0-indexed line numbers
   if (value) return Number.parseInt(value) - 1;
-  return;
-};
-
-/**
- * Extract value from environment variables
- *
- * @param variables Array of environment variables in the form `NAME=VALUE`
- * @param varname Variable name to get value for
- */
-const getVariableValue = (variables: string[], varname: string) => {
-  if (!varname) return;
-  const varRe = new RegExp(`^${varname}=(.*)$`);
-  for (let variable of variables) {
-    const match = variable.match(varRe);
-    if (match) return match[1];
-  }
   return;
 };
