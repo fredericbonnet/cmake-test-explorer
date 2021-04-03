@@ -34,15 +34,13 @@ export async function activate(context: vscode.ExtensionContext) {
     );
     if (!cmakeExtension) {
       const message = `CMake integration is enabled but the CMake Tools extension is not installed`;
-      log.warn(
-        message
-      );
+      log.warn(message);
       vscode.window.showErrorMessage(message);
     } else if (!cmakeExtension.isActive) {
       log.warn(
         `CMake integration is enabled but the CMake Tools extension is not active`
       );
-      cmakeExtension.activate();
+      await cmakeExtension.activate();
     }
   }
 
