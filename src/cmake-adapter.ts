@@ -552,6 +552,9 @@ export class CmakeAdapter implements TestAdapter {
       if ((await vscode.commands.getCommands()).includes(command)) {
         const value = (await vscode.commands.executeCommand(command)) as string;
         substitutionMap.set(`\${${varname}}`, value);
+      } else {
+        // Missing variables default to empty
+        substitutionMap.set(`\${${varname}}`, '');
       }
     }
     return substitutionMap;
