@@ -72,19 +72,19 @@
         "cmakeExplorer.buildDir": {
           "description": "The CMake build directory (relative to the workspace folder)",
           "type": "string",
-          "default": "",
+          "default": "${buildDirectory}",
           "scope": "resource"
         },
         "cmakeExplorer.buildConfig": {
           "description": "The CMake build configuration (empty for any)",
           "type": "string",
-          "default": "",
+          "default": "${buildType}",
           "scope": "resource"
         },
         "cmakeExplorer.cmakeIntegration": {
           "description": "Integrate with the CMake Tools extension for additional variables",
           "type": "boolean",
-          "default": "false",
+          "default": "true",
           "scope": "resource"
         },
         "cmakeExplorer.debugConfig": {
