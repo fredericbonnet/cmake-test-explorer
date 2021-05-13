@@ -25,9 +25,9 @@ export async function activate(context: vscode.ExtensionContext) {
     workspaceFolder.uri
   );
 
-  const cmakeIntegration = config.get<boolean>('cmakeIntegration') || true;
-
-  if (cmakeIntegration) {
+  // Note: config.get() returns 'true' instead of true with default settings
+  const cmakeIntegration = config.get('cmakeIntegration');
+  if (cmakeIntegration === 'true' || cmakeIntegration === true) {
     // Check for CMake Tools extension
     let cmakeExtension = vscode.extensions.getExtension(
       'ms-vscode.cmake-tools'
