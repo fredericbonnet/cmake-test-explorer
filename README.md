@@ -19,27 +19,36 @@ UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explor
 
 ## Configuration
 
-| Property                           | Description                                                                                                                                                                                                                                                                                        |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cmakeExplorer.buildDir`           | Location of the CMake build directory. Can be absolute or relative to the workspace. Defaults to empty, i.e. the workspace directory.                                                                                                                                                              |
-| `cmakeExplorer.buildConfig`        | Name of the CMake build configuration. Can be set to any standard or custom configuration name (e.g. `Default`, `Release`, `RelWithDebInfo`, `MinSizeRel` ). Case-insensitive. Defaults to empty, i.e. no specific configuration.                                                                  |
-| `cmakeExplorer.cmakeIntegration`   | Integrate with the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension for additional variables. See [Variable substitution](#variable-substitution) for more info.                                                                                 |
-| `cmakeExplorer.debugConfig`        | Custom debug configuration to use (empty for default). See [Debugging](#debugging) for more info.                                                                                                                                                                                                  |
-| `cmakeExplorer.parallelJobs`       | Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable). Defaults to zero. See [Parallel test jobs](#parallel-test-jobs) for more info.                                                                                                                               |
-| `cmakeExplorer.extraCtestLoadArgs` | Extra command-line arguments passed to CTest at load time. For example, `-R foo` will only load the tests containing the string `foo`. Defaults to empty.                                                                                                                                          |
-| `cmakeExplorer.extraCtestRunArgs`  | Extra command-line arguments passed to CTest at run time. For example, `-V` will enable verbose output from tests. Defaults to empty.                                                                                                                                                              |
-| `cmakeExplorer.suiteDelimiter`     | Delimiter used to split CMake test names into suite/test hierarchy. For example, if you name your tests `suite1/subsuite1/test1`, `suite1/subsuite1/test2`, `suite2/subsuite3/test4`, etc. you may set this to `/` in order to group your suites into a tree. If empty, the tests are not grouped. |
-| `cmakeExplorer.testFileVar`        | CTest environment variable defined for a test, giving the path of the source file containing the test. See [Source files](#source-files) for more info.                                                                                                                                            |
-| `cmakeExplorer.testLineVar`        | CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known). See [Source files](#source-files) for more info.                                                                                                                |
+| Property                           | Description                                                                                                                                                                                                                                                                                        | Default value                                                             |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `cmakeExplorer.buildDir`           | Location of the CMake build directory. Can be absolute or relative to the workspace. Empty means the workspace directory.                                                                                                                                                                          | `${buildDirectory}` (see [Variable substitution](#variable-substitution)) |
+| `cmakeExplorer.buildConfig`        | Name of the CMake build configuration. Can be set to any standard or custom configuration name (e.g. `Default`, `Release`, `RelWithDebInfo`, `MinSizeRel` ). Case-insensitive. Empty means no specific configuration.                                                                              | `${buildType}` (see [Variable substitution](#variable-substitution))      |
+| `cmakeExplorer.cmakeIntegration`   | Integrate with the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension for additional variables. See [Variable substitution](#variable-substitution) for more info.                                                                                 | `true`                                                                    |
+| `cmakeExplorer.debugConfig`        | Custom debug configuration to use. See [Debugging](#debugging) for more info.                                                                                                                                                                                                                      | Empty                                                                     |
+| `cmakeExplorer.parallelJobs`       | Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable). See [Parallel test jobs](#parallel-test-jobs) for more info.                                                                                                                                                 | 0                                                                         |
+| `cmakeExplorer.extraCtestLoadArgs` | Extra command-line arguments passed to CTest at load time. For example, `-R foo` will only load the tests containing the string `foo`.                                                                                                                                                             | Empty                                                                     |
+| `cmakeExplorer.extraCtestRunArgs`  | Extra command-line arguments passed to CTest at run time. For example, `-V` will enable verbose output from tests.                                                                                                                                                                                 | Empty                                                                     |
+| `cmakeExplorer.suiteDelimiter`     | Delimiter used to split CMake test names into suite/test hierarchy. For example, if you name your tests `suite1/subsuite1/test1`, `suite1/subsuite1/test2`, `suite2/subsuite3/test4`, etc. you may set this to `/` in order to group your suites into a tree. If empty, the tests are not grouped. | Empty                                                                     |
+| `cmakeExplorer.testFileVar`        | CTest environment variable defined for a test, giving the path of the source file containing the test. See [Source files](#source-files) for more info.                                                                                                                                            | Empty                                                                     |
+| `cmakeExplorer.testLineVar`        | CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known). See [Source files](#source-files) for more info.                                                                                                                | Empty                                                                     |
 
 ## Variable substitution
 
 Some options support the replacement of special values in their string value by
-using a `${variable}` syntax. The following built-in variables are expanded:
+using a `${variable}` syntax.
+
+The following built-in variables are expanded:
 
 | Variable             | Expansion                                      |
 | -------------------- | ---------------------------------------------- |
 | `${workspaceFolder}` | The full path to the workspace root directory. |
+
+Environments variables are prefixed with `env:`. For example `${env:HOME}` will
+be substituted with the home path on Unix systems.
+
+| Variable           | Expansion                                                         |
+| ------------------ | ----------------------------------------------------------------- |
+| `${env:<VARNAME>}` | The value of the environment variable `VARNAME` at session start. |
 
 Additionally, if the [CMake
 Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
@@ -53,12 +62,16 @@ used:
 | `${buildDirectory}` | The full path to the current CMake build directory.                         |
 
 If you want the Test Explorer to infer the right configuration automatically
-from CMake Tools, simply use these settings:
+from CMake Tools, simply use these default settings:
 
 | Property                    | Value               |
 | --------------------------- | ------------------- |
 | `cmakeExplorer.buildDir`    | `${buildDirectory}` |
 | `cmakeExplorer.buildConfig` | `${buildType}`      |
+
+If these variables are missing from the current settings (for example, if the
+CMake Tools extension is missing or disabled) then they are substituted with an
+empty string, falling back to default behavior.
 
 Note that any change to the CMake Tools configuration, either from the settings
 or the status bar, requires a manual test reload from the Test Explorer sidebar.
