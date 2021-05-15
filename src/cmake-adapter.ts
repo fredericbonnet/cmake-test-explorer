@@ -557,6 +557,12 @@ export class CmakeAdapter implements TestAdapter {
         substitutionMap.set(`\${${varname}}`, '');
       }
     }
+
+    // Environment variables prefixed by 'env:'
+    for (const [varname, value] of Object.entries(process.env)) {
+      if (value !== undefined) substitutionMap.set(`\${env:${varname}}`, value);
+    }
+
     return substitutionMap;
   }
 
