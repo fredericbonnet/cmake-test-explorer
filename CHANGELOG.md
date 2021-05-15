@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2021-05-15
+
+### Added
+
+- Add environment variable substitutions with `${env:<VARNAME>}` syntax. This
+  implements issue #28.
+
+### Changed
+
+- CMake Tools integration is enabled by default, with fallback to old behavior.
+
 ## [0.13.0] - 2021-01-27
 
 ## Fixed
@@ -119,7 +130,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.13.0...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.10.1...v0.11.0
