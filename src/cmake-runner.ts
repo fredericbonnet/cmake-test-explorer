@@ -141,6 +141,7 @@ export function loadCmakeTests(
  * @param cwd CMake build directory to run the command within
  * @param testIndexes Test indexes to run (empty for all)
  * @param parallelJobs Number of jobs to run in parallel
+ * @param buildConfig Build configuration (may be empty)
  * @param extraArgs Extra arguments passed to CTest
  */
 export function scheduleCmakeTestProcess(
@@ -148,6 +149,7 @@ export function scheduleCmakeTestProcess(
   cwd: string,
   testIndexes: number[],
   parallelJobs: number,
+  buildConfig?: string,
   extraArgs: string = ''
 ): CmakeTestProcess {
   // Build options
@@ -161,7 +163,14 @@ export function scheduleCmakeTestProcess(
 
   const testProcess = child_process.spawn(
     ctestPath,
-    ['-V', ...jobs, ...testList, ...args],
+
+    [
+      ...(!!buildConfig ? ['--build-config', buildConfig] : []),
+      '-V',
+      ...jobs,
+      ...testList,
+      ...args,
+    ],
     { cwd }
   );
   if (!testProcess.pid) {

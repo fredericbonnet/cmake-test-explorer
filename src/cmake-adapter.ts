@@ -307,10 +307,12 @@ export class CmakeAdapter implements TestAdapter {
       // Get & substitute config settings
       const [
         buildDir,
+        buildConfig,
         extraCtestRunArgs,
         suiteDelimiter,
       ] = await this.getConfigStrings([
         'buildDir',
+        'buildConfig',
         'extraCtestRunArgs',
         'suiteDelimiter',
       ]);
@@ -320,12 +322,13 @@ export class CmakeAdapter implements TestAdapter {
       const testIndexes = this.getTestIndexes(tests, suiteDelimiter);
 
       // Run tests
-      const cwd = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
+      const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
       this.currentTestProcess = scheduleCmakeTestProcess(
         this.ctestPath,
-        cwd,
+        dir,
         testIndexes,
         parallelJobs,
+        buildConfig,
         extraCtestRunArgs
       );
       let outputs: string[][] = [];
