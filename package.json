@@ -57,7 +57,7 @@
     "hbenl.vscode-test-explorer"
   ],
   "activationEvents": [
-    "*"
+    "workspaceContains:**/CMakeLists.txt",
   ],
   "contributes": {
     "configuration": {
