@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2021-11-11
+
+### Fixed
+
+- Activate only when `CMakeLists.txt` file is present (thanks @dvirtz!)
+
 ## [0.14.1] - 2021-05-22
 
 ### Fixed
@@ -22,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- CMake Tools integration is enabled by default, with fallback to old behavior.
+- CMake Tools integration is enabled by default, with fallback to old behavior
+  (thanks @HO-COOH!).
 
 ## [0.13.0] - 2021-01-27
 
@@ -136,7 +143,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.1...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.2...HEAD
+[0.14.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.2...v0.14.2
 [0.14.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.12.0...v0.13.0
