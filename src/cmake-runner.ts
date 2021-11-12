@@ -29,7 +29,8 @@ const CTEST_OUTPUT_RE = /^(\d+): .*$/;
 const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+   Passed/;
 
 /** Regexp for test failed line */
-const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*Failed/;
+const CTEST_FAILED_RE =
+  /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*Failed/;
 
 /** Generic test event */
 export type CmakeTestEvent =
@@ -135,22 +136,40 @@ export function loadCmakeTests(
 }
 
 /**
+ * Cmake test run options
+ */
+export type CmakeTestRunOptions = {
+  /** CTest command path */
+  ctestPath: string;
+
+  /** CMake build directory to run the command within */
+  cwd: string;
+
+  /** Number of jobs to run in parallel */
+  parallelJobs: number;
+
+  /** Build configuration (may be empty) */
+  buildConfig: string;
+
+  /** Extra arguments passed to CTest */
+  extraArgs: string;
+};
+
+/**
  * Schedule a CMake test process
  *
- * @param ctestPath CTest command path
- * @param cwd CMake build directory to run the command within
  * @param testIndexes Test indexes to run (empty for all)
- * @param parallelJobs Number of jobs to run in parallel
- * @param buildConfig Build configuration (may be empty)
- * @param extraArgs Extra arguments passed to CTest
+ * @param options Run options
  */
 export function scheduleCmakeTestProcess(
-  ctestPath: string,
-  cwd: string,
   testIndexes: number[],
-  parallelJobs: number,
-  buildConfig?: string,
-  extraArgs: string = ''
+  {
+    ctestPath,
+    cwd,
+    parallelJobs,
+    buildConfig,
+    extraArgs,
+  }: CmakeTestRunOptions
 ): CmakeTestProcess {
   // Build options
   const testList = testIndexes.length

@@ -30,6 +30,7 @@ import {
   CacheNotFoundError,
   getCtestPath,
   CmakeTestEvent,
+  CmakeTestRunOptions,
 } from './cmake-runner';
 
 /** Special ID value for the root suite */
@@ -304,33 +305,17 @@ export class CmakeAdapter implements TestAdapter {
     }
 
     try {
+      // Get run options
+      const options = await this.getRunOptions();
+
       // Get & substitute config settings
-      const [
-        buildDir,
-        buildConfig,
-        extraCtestRunArgs,
-        suiteDelimiter,
-      ] = await this.getConfigStrings([
-        'buildDir',
-        'buildConfig',
-        'extraCtestRunArgs',
-        'suiteDelimiter',
-      ]);
-      const parallelJobs = this.getParallelJobs();
+      const [suiteDelimiter] = await this.getConfigStrings(['suiteDelimiter']);
 
       // Get flat list of test indexes
       const testIndexes = this.getTestIndexes(tests, suiteDelimiter);
 
       // Run tests
-      const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.currentTestProcess = scheduleCmakeTestProcess(
-        this.ctestPath,
-        dir,
-        testIndexes,
-        parallelJobs,
-        buildConfig,
-        extraCtestRunArgs
-      );
+      this.currentTestProcess = scheduleCmakeTestProcess(testIndexes, options);
       let outputs: string[][] = [];
       await executeCmakeTestProcess(
         this.currentTestProcess,
@@ -366,6 +351,30 @@ export class CmakeAdapter implements TestAdapter {
     } finally {
       this.currentTestProcess = undefined;
     }
+  }
+
+  /**
+   * Get test run options
+   *
+   * @return Run options
+   */
+  private async getRunOptions(): Promise<CmakeTestRunOptions> {
+    // Get & substitute config settings
+    const [buildDir, buildConfig, extraCtestRunArgs] =
+      await this.getConfigStrings([
+        'buildDir',
+        'buildConfig',
+        'extraCtestRunArgs',
+      ]);
+    const parallelJobs = this.getParallelJobs();
+
+    return {
+      ctestPath: this.ctestPath,
+      cwd: path.resolve(this.workspaceFolder.uri.fsPath, buildDir),
+      parallelJobs,
+      buildConfig,
+      extraArgs: extraCtestRunArgs,
+    };
   }
 
   /**
