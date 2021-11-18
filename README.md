@@ -28,6 +28,7 @@ UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explor
 | `cmakeExplorer.parallelJobs`       | Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable). See [Parallel test jobs](#parallel-test-jobs) for more info.                                                                                                                                                 | 0                                                                         |
 | `cmakeExplorer.extraCtestLoadArgs` | Extra command-line arguments passed to CTest at load time. For example, `-R foo` will only load the tests containing the string `foo`.                                                                                                                                                             | Empty                                                                     |
 | `cmakeExplorer.extraCtestRunArgs`  | Extra command-line arguments passed to CTest at run time. For example, `-V` will enable verbose output from tests.                                                                                                                                                                                 | Empty                                                                     |
+| `cmakeExplorer.extraCtestEnvVars`  | Extra environment variables passed to CTest at run time.                                                                                                                                                                                                                                           | Empty                                                                     |
 | `cmakeExplorer.suiteDelimiter`     | Delimiter used to split CMake test names into suite/test hierarchy. For example, if you name your tests `suite1/subsuite1/test1`, `suite1/subsuite1/test2`, `suite2/subsuite3/test4`, etc. you may set this to `/` in order to group your suites into a tree. If empty, the tests are not grouped. | Empty                                                                     |
 | `cmakeExplorer.testFileVar`        | CTest environment variable defined for a test, giving the path of the source file containing the test. See [Source files](#source-files) for more info.                                                                                                                                            | Empty                                                                     |
 | `cmakeExplorer.testLineVar`        | CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known). See [Source files](#source-files) for more info.                                                                                                                | Empty                                                                     |
@@ -49,6 +50,9 @@ be substituted with the home path on Unix systems.
 | Variable           | Expansion                                                         |
 | ------------------ | ----------------------------------------------------------------- |
 | `${env:<VARNAME>}` | The value of the environment variable `VARNAME` at session start. |
+
+_(Note: On Windows, variable names are case insensitive but must be uppercase 
+for `env:` substitition to work properly)_
 
 Additionally, if the [CMake
 Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)

@@ -366,11 +366,13 @@ export class CmakeAdapter implements TestAdapter {
         'buildConfig',
         'extraCtestRunArgs',
       ]);
+    const extraCtestEnvVars = await this.getConfigObject('extraCtestEnvVars');
     const parallelJobs = this.getParallelJobs();
 
     return {
       ctestPath: this.ctestPath,
       cwd: path.resolve(this.workspaceFolder.uri.fsPath, buildDir),
+      env: mergeVariablesIntoProcessEnv(extraCtestEnvVars),
       parallelJobs,
       buildConfig,
       extraArgs: extraCtestRunArgs,
@@ -437,27 +439,42 @@ export class CmakeAdapter implements TestAdapter {
     this.log.info(`Debugging CMake test ${id}`);
     const disposables: vscode.Disposable[] = [];
     try {
+      // Get & substitute config settings
+      const extraCtestEnvVars = await this.getConfigObject('extraCtestEnvVars');
+
       // Get global debug config
       const [debugConfig] = await this.getConfigStrings(['debugConfig']);
       const defaultConfig = this.getDefaultDebugConfiguration();
 
       // Get test-specific debug config
-      const debuggedTestConfig = getCmakeTestDebugConfiguration(test);
+      const { env, ...debuggedTestConfig } =
+        getCmakeTestDebugConfiguration(test);
+
+      // Utilities to merge configs and environment variables
+      const mergeEnvironments = (environment: DebugEnvironment) =>
+        mergeVariablesIntoDebugEnv(
+          mergeVariablesIntoDebugEnv(environment, extraCtestEnvVars),
+          env
+        );
+      const mergeConfigs = ({
+        environment,
+        ...config
+      }: vscode.DebugConfiguration) => ({
+        ...config,
+        ...debuggedTestConfig,
+        environment: mergeEnvironments(environment),
+      });
 
       // Register a DebugConfigurationProvider to combine global and
       // test-specific debug configurations before the debugging session starts
       disposables.push(
         vscode.debug.registerDebugConfigurationProvider('*', {
-          resolveDebugConfiguration: (
+          resolveDebugConfigurationWithSubstitutedVariables: (
             folder: vscode.WorkspaceFolder | undefined,
             config: vscode.DebugConfiguration,
             token?: vscode.CancellationToken
-          ): vscode.ProviderResult<vscode.DebugConfiguration> => {
-            return {
-              ...config,
-              ...debuggedTestConfig,
-            };
-          },
+          ): vscode.ProviderResult<vscode.DebugConfiguration> =>
+            mergeConfigs(config),
         })
       );
 
@@ -540,17 +557,30 @@ export class CmakeAdapter implements TestAdapter {
     key: string
   ) {
     const configStr = config.get<string>(key) || '';
-    let str = configStr;
-    varMap.forEach((value, key) => {
-      while (str.indexOf(key) > -1) {
-        str = str.replace(key, value);
-      }
-    });
-    return str;
+    return substituteString(configStr, varMap);
+  }
+
+  /**
+   * Get & substitute config object
+   *
+   * @param name Config object name
+   *
+   * @return Config object values
+   */
+  private async getConfigObject(name: string) {
+    const config = this.getWorkspaceConfiguration();
+    const varMap = await this.getVariableSubstitutionMap();
+    const obj = config.get<{ [key: string]: string }>(name) || {};
+    for (let key in obj) {
+      obj[key] = substituteString(obj[key], varMap);
+    }
+    return obj;
   }
 
   /**
    * Get variable to value substitution map for config strings
+   *
+   * @note on Windows environment variable names are converted to uppercase
    */
   private async getVariableSubstitutionMap() {
     // Standard variables
@@ -572,7 +602,14 @@ export class CmakeAdapter implements TestAdapter {
 
     // Environment variables prefixed by 'env:'
     for (const [varname, value] of Object.entries(process.env)) {
-      if (value !== undefined) substitutionMap.set(`\${env:${varname}}`, value);
+      if (value !== undefined) {
+        substitutionMap.set(
+          `\${env:${
+            process.platform == 'win32' ? varname.toUpperCase() : varname
+          }}`,
+          value
+        );
+      }
     }
 
     return substitutionMap;
@@ -633,10 +670,8 @@ const getTestFileInfo = (
  * @param env Map of environment variables
  * @param varname Variable name to get value for
  */
-const getFileFromEnvironment = (
-  env: { [key: string]: string },
-  fileVar: string
-) => env[fileVar];
+const getFileFromEnvironment = (env: NodeJS.ProcessEnv, fileVar: string) =>
+  env[fileVar];
 
 /**
  * Get line number from environment variables
@@ -644,12 +679,101 @@ const getFileFromEnvironment = (
  * @param env Map of environment variables
  * @param varname Variable name to get value for
  */
-const getLineFromEnvironment = (
-  env: { [key: string]: string },
-  varname: string
-) => {
+const getLineFromEnvironment = (env: NodeJS.ProcessEnv, varname: string) => {
   const value = env[varname];
   // Test Explorer expects 0-indexed line numbers
   if (value) return Number.parseInt(value) - 1;
   return;
+};
+
+/**
+ * Substitute variables in string
+ *
+ * @param str String to substitute
+ * @param varMap Variable to value map
+ *
+ * @return Substituted string
+ */
+const substituteString = (str: string, varMap: Map<string, string>) => {
+  varMap.forEach((value, key) => {
+    while (str.indexOf(key) > -1) {
+      str = str.replace(key, value);
+    }
+  });
+  return str;
+};
+
+/** Debug environment array */
+type DebugEnvironment = { name: string; value: string | undefined }[];
+
+/**
+ * Get key of variable in process environment
+ *
+ * Some platforms such as Win32 have case-insensitive environment variables
+ *
+ * @param varname Variable name
+ * @param env Process environment
+ */
+const getVariableKey = (varname: string, env: NodeJS.ProcessEnv) =>
+  process.platform === 'win32'
+    ? Object.keys(env).find(
+        (key) => key.toUpperCase() == varname.toUpperCase()
+      ) || varname
+    : varname;
+
+/**
+ * Get index of variable in debug environment
+ *
+ * Some platforms such as Win32 have case-insensitive environment variables
+ *
+ * @param varname Variable name
+ * @param environment Debug environment
+ */
+const getVariableIndex = (varname: string, environment: DebugEnvironment) =>
+  process.platform === 'win32'
+    ? environment.findIndex(
+        ({ name }) => name.toUpperCase() == varname.toUpperCase()
+      )
+    : environment.findIndex(({ name }) => name == varname);
+
+/**
+ * Merge variables into process environment
+ *
+ * @param variables Variables to merge
+ *
+ * @return Environment with variables merged
+ */
+const mergeVariablesIntoProcessEnv = (variables: {
+  [name: string]: string;
+}) => {
+  const result = { ...process.env };
+  for (let name in variables) {
+    delete result[getVariableKey(name, process.env)];
+    result[name] = variables[name];
+  }
+  return result;
+};
+
+/**
+ * Merge variables into debug environment
+ *
+ * @param environment Target environment
+ * @param variables Variables to merge
+ *
+ * @return Environment with variables merged
+ */
+const mergeVariablesIntoDebugEnv = (
+  environment: DebugEnvironment,
+  variables: { [name: string]: string }
+) => {
+  const result = [...environment];
+  for (let name in variables) {
+    const variableIndex = getVariableIndex(name, environment);
+    if (variableIndex == -1) {
+      result.push({ name, value: variables[name] });
+    } else {
+      result[variableIndex] = { name, value: variables[name] };
+    }
+  }
+  return result;
 };

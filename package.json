@@ -112,6 +112,15 @@
           "default": "",
           "scope": "resource"
         },
+        "cmakeExplorer.extraCtestEnvVars": {
+          "description": "Extra environment variables passed to CTest at run time",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "scope": "resource"
+        },
         "cmakeExplorer.testFileVar": {
           "description": "CTest environment variable defined for a test, giving the path of the source file containing the test",
           "type": "string",

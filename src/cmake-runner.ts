@@ -145,6 +145,9 @@ export type CmakeTestRunOptions = {
   /** CMake build directory to run the command within */
   cwd: string;
 
+  /** Environment */
+  env: NodeJS.ProcessEnv;
+
   /** Number of jobs to run in parallel */
   parallelJobs: number;
 
@@ -166,6 +169,7 @@ export function scheduleCmakeTestProcess(
   {
     ctestPath,
     cwd,
+    env,
     parallelJobs,
     buildConfig,
     extraArgs,
@@ -190,7 +194,7 @@ export function scheduleCmakeTestProcess(
       ...testList,
       ...args,
     ],
-    { cwd }
+    { cwd, env }
   );
   if (!testProcess.pid) {
     // Something failed, e.g. the executable or cwd doesn't exist
@@ -313,7 +317,9 @@ export function getCtestPath(cwd: string) {
  *
  * @param test CMake test info
  */
-export function getCmakeTestEnvironmentVariables(test: CmakeTestInfo) {
+export function getCmakeTestEnvironmentVariables(
+  test: CmakeTestInfo
+): NodeJS.ProcessEnv | undefined {
   const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
   if (!ENVIRONMENT) return;
 
