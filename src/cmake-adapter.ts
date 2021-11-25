@@ -464,6 +464,11 @@ export class CmakeAdapter implements TestAdapter {
         ...debuggedTestConfig,
         environment: mergeEnvironments(environment),
       });
+      const mergeLldbConfigs = (config: vscode.DebugConfiguration) => ({
+        ...config,
+        ...debuggedTestConfig,
+        env: { ...config.env, ...extraCtestEnvVars, ...env },
+      });
 
       // Register a DebugConfigurationProvider to combine global and
       // test-specific debug configurations before the debugging session starts
@@ -474,7 +479,9 @@ export class CmakeAdapter implements TestAdapter {
             config: vscode.DebugConfiguration,
             token?: vscode.CancellationToken
           ): vscode.ProviderResult<vscode.DebugConfiguration> =>
-            mergeConfigs(config),
+            config.type === 'lldb'
+              ? mergeLldbConfigs(config)
+              : mergeConfigs(config),
         })
       );
 

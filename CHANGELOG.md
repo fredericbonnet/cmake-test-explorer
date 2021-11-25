@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix environment handling with CodeLLDB debugger. This fixes issue #43.
+
 ## [0.15.0] - 2021-11-18
 
 ### Added
