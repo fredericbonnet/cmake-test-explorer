@@ -7,10 +7,12 @@
   "contributors": [
     "Frédéric Bonnet <fredericbonnet@free.fr>",
     "Andrew Bridge (https://github.com/andrewbridge)",
-    "Maciej Dems (https://github.com/macdems)"
+    "Maciej Dems (https://github.com/macdems)",
+    "dvirtz (https://github.com/dvirtz)",
+    "HO-COOH (https://github.com/HO-COOH)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
