@@ -30,7 +30,7 @@ const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+   Passed/;
 
 /** Regexp for test failed line */
 const CTEST_FAILED_RE =
-  /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*Failed/;
+  /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*/;
 
 /** Generic test event */
 export type CmakeTestEvent =
