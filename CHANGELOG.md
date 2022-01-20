@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.2] - 2022-01-20
+
+### Fixed
+
+- Fix detection of crashed tests (see issue #47)
+- Fix debug environment issue on macOS (see issue #48)
+
 ## [0.15.1] - 2021-11-25
 
 ### Fixed
@@ -17,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add support for extra CTest environment variables. This addresses issue #33. 
+- Add support for extra CTest environment variables. This addresses issue #33.
 
 ## [0.14.2] - 2021-11-11
 
@@ -155,7 +162,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.1...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.2...HEAD
+[0.15.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.1...v0.14.2
