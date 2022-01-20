@@ -457,7 +457,7 @@ export class CmakeAdapter implements TestAdapter {
           env
         );
       const mergeConfigs = ({
-        environment,
+        environment = [],
         ...config
       }: vscode.DebugConfiguration) => ({
         ...config,
