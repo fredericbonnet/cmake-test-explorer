@@ -599,7 +599,7 @@ export class CmakeAdapter implements TestAdapter {
     for (const varname of ['buildType', 'buildDirectory']) {
       const command = `cmake.${varname}`;
       if ((await vscode.commands.getCommands()).includes(command)) {
-        const value = (await vscode.commands.executeCommand(command)) as string;
+        const value = (await vscode.commands.executeCommand(command, this.workspaceFolder)) as string;
         substitutionMap.set(`\${${varname}}`, value);
       } else {
         // Missing variables default to empty
