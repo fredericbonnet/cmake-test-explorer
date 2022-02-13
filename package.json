@@ -9,10 +9,11 @@
     "Andrew Bridge (https://github.com/andrewbridge)",
     "Maciej Dems (https://github.com/macdems)",
     "dvirtz (https://github.com/dvirtz)",
-    "HO-COOH (https://github.com/HO-COOH)"
+    "HO-COOH (https://github.com/HO-COOH)",
+    "Mészáros Gergely (https://github.com/Maetveis)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {

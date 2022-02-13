@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.3] - 2022-02-13
+
+### Fixed
+
+- Fix test detection in multi folder workspaces (thanks @Maetveis!). This fixes
+  issue #46
+
 ## [0.15.2] - 2022-01-20
 
 ### Fixed
@@ -162,7 +169,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.2...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.3...HEAD
+[0.15.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.14.2...v0.15.0
