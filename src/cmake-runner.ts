@@ -20,17 +20,17 @@ const CMAKE_CACHE_FILE = 'CMakeCache.txt';
 const CTEST_RE = /^CMAKE_CTEST_COMMAND:INTERNAL=(.*)$/m;
 
 /** Regexp for test start line */
-const CTEST_START_RE = /^\s+Start\s+(\d+): (\S+)/;
+const CTEST_START_RE = /^\s+Start\s+(\d+): (.+)/;
 
 /** Regexp for test output line */
 const CTEST_OUTPUT_RE = /^(\d+): .*$/;
 
 /** Regexp for test passed line */
-const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+   Passed/;
+const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+   Passed/;
 
 /** Regexp for test failed line */
 const CTEST_FAILED_RE =
-  /^\s*\d+\/\d+ Test\s+#(\d+): (\S+).*\.\.\.+\*\*\*/;
+  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*/;
 
 /** Generic test event */
 export type CmakeTestEvent =
