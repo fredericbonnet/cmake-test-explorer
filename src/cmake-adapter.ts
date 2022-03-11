@@ -341,7 +341,7 @@ export class CmakeAdapter implements TestAdapter {
               this.testStatesEmitter.fire(<TestEvent>{
                 type: 'test',
                 test: event.name,
-                state: event.success ? 'passed' : 'failed',
+                state: event.state,
                 message,
               });
               break;

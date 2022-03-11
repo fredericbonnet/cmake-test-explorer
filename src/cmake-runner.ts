@@ -28,9 +28,11 @@ const CTEST_OUTPUT_RE = /^(\d+): .*$/;
 /** Regexp for test passed line */
 const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+   Passed/;
 
+/** Regexp for test skipped line */
+const CTEST_SKIPPED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Skipped/;
+
 /** Regexp for test failed line */
-const CTEST_FAILED_RE =
-  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*/;
+const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*/;
 
 /** Generic test event */
 export type CmakeTestEvent =
@@ -57,7 +59,7 @@ export interface CmakeTestEndEvent {
   type: 'end';
   index: number;
   name: string;
-  success: boolean;
+  state: 'passed' | 'failed' | 'skipped';
 }
 
 /** Error thrown when CMake cache file is not found in build dir */
@@ -237,13 +239,19 @@ export function executeCmakeTestProcess(
             const index = Number.parseInt(matches[1]);
             const name = matches[2];
             onEvent({ type: 'output', index, line });
-            onEvent({ type: 'end', index, name, success: true });
+            onEvent({ type: 'end', index, name, state: 'passed' });
+          } else if ((matches = line.match(CTEST_SKIPPED_RE))) {
+            // Test skipped
+            const index = Number.parseInt(matches[1]);
+            const name = matches[2];
+            onEvent({ type: 'output', index, line });
+            onEvent({ type: 'end', index, name, state: 'skipped' });
           } else if ((matches = line.match(CTEST_FAILED_RE))) {
             // Test failed
             const index = Number.parseInt(matches[1]);
             const name = matches[2];
             onEvent({ type: 'output', index, line });
-            onEvent({ type: 'end', index, name, success: false });
+            onEvent({ type: 'end', index, name, state: 'failed' });
           }
         })
         .on('end', () => {
