@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2022-05-25
+
+### Added
+
+- Add support for reporting skipped tests (thanks @tustin2121!).
+
 ## [0.15.4] - 2022-03-02
 
 ### Fixed
@@ -176,7 +182,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.4...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.4...v0.16.0
 [0.15.4]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.3...v0.15.4
 [0.15.3]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.2...v0.15.3
 [0.15.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.1...v0.15.2
