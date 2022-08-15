@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.2] - 2022-08-15
+
+### Fixed
+
+- Fix npm vulnerabities.
+
 ## [0.16.1] - 2022-08-15
 
 ### Fixed
@@ -188,7 +194,8 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.1...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.2...HEAD
+[0.16.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.4...v0.16.0
 [0.15.4]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.15.3...v0.15.4
