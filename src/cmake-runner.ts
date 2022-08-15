@@ -29,7 +29,12 @@ const CTEST_OUTPUT_RE = /^(\d+): .*$/;
 const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+   Passed/;
 
 /** Regexp for test skipped line */
-const CTEST_SKIPPED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Skipped/;
+const CTEST_SKIPPED_RE =
+  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Skipped/;
+
+/** Regexp for test disabled line */
+const CTEST_DISABLED_RE =
+  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Not Run \(Disabled\)/;
 
 /** Regexp for test failed line */
 const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*/;
@@ -240,8 +245,11 @@ export function executeCmakeTestProcess(
             const name = matches[2];
             onEvent({ type: 'output', index, line });
             onEvent({ type: 'end', index, name, state: 'passed' });
-          } else if ((matches = line.match(CTEST_SKIPPED_RE))) {
-            // Test skipped
+          } else if (
+            (matches = line.match(CTEST_SKIPPED_RE)) ||
+            (matches = line.match(CTEST_DISABLED_RE))
+          ) {
+            // Test skipped or disabled
             const index = Number.parseInt(matches[1]);
             const name = matches[2];
             onEvent({ type: 'output', index, line });
