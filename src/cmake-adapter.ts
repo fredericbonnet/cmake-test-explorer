@@ -13,6 +13,7 @@ import {
   TestRunFinishedEvent,
   TestSuiteEvent,
   TestEvent,
+  TestDecoration,
   TestInfo,
   TestSuiteInfo,
   RetireEvent,
@@ -38,6 +39,9 @@ const ROOT_SUITE_ID = '*';
 
 /** Suffix for suite IDS, used to distinguish suite IDs from test IDs */
 const SUITE_SUFFIX = '*';
+
+/** Regexp for detecting GCC-like error with file and line info */
+const DECORATION_RE = /^(?:\d+): ([^<].*?):(\d+):\d*:?\s+(?:fatal\s+)?(?:warning|error):\s+(.*)$/
 
 /**
  * CMake test adapter for the Test Explorer UI extension
@@ -316,7 +320,9 @@ export class CmakeAdapter implements TestAdapter {
 
       // Run tests
       this.currentTestProcess = scheduleCmakeTestProcess(testIndexes, options);
-      let outputs: string[][] = [];
+      const outputs: string[][] = [];
+      const decorations: TestDecoration[][] = [];
+
       await executeCmakeTestProcess(
         this.currentTestProcess,
         (event: CmakeTestEvent) => {
@@ -332,6 +338,18 @@ export class CmakeAdapter implements TestAdapter {
             case 'output':
               if (!outputs[event.index]) outputs[event.index] = [];
               outputs[event.index].push(event.line);
+
+              const matches = event.line.match(DECORATION_RE)
+              if (matches) {
+                const [, file, line, message] = matches;
+
+                if (!decorations[event.index]) decorations[event.index] = [];
+                decorations[event.index].push({
+                  file,
+                  line: Number.parseInt(line) - 1,
+                  message,
+                })
+              }
               break;
 
             case 'end':
@@ -343,6 +361,7 @@ export class CmakeAdapter implements TestAdapter {
                 test: event.name,
                 state: event.state,
                 message,
+                decorations: decorations[event.index],
               });
               break;
           }
