@@ -112,7 +112,7 @@ export class CmakeAdapter implements TestAdapter {
     } catch (e) {
       this.testsEmitter.fire(<TestLoadFinishedEvent>{
         type: 'finished',
-        errorMessage: e.toString(),
+        errorMessage: `${e}`,
       });
     }
 
@@ -148,7 +148,7 @@ export class CmakeAdapter implements TestAdapter {
           type: 'suite',
           suite: ROOT_SUITE_ID,
           state: 'errored',
-          message: e.toString(),
+          message: `${e}`,
         });
       }
     } else {
@@ -283,8 +283,11 @@ export class CmakeAdapter implements TestAdapter {
         return rootSuite;
       }
     } catch (e) {
-      if (e instanceof CacheNotFoundError && this.isDefaultConfiguration()) {
-        // Ignore error when using default config, return empty result instead
+      if (e instanceof CacheNotFoundError && !(await this.isCmakeWorkspace())) {
+        // Ignore error when extension is not activable, return empty result instead
+        this.log.info(
+          `Workspace does not seem to contain CMake project files, ignoring tests`
+        );
         return;
       } else {
         throw e;
@@ -492,7 +495,7 @@ export class CmakeAdapter implements TestAdapter {
         debugConfig || defaultConfig
       );
     } catch (e) {
-      this.log.error(`Error debugging CMake test ${id}`, e.toString());
+      this.log.error(`Error debugging CMake test ${id}: ${e}`);
     } finally {
       disposables.forEach((disposable) => disposable.dispose());
     }
@@ -531,11 +534,16 @@ export class CmakeAdapter implements TestAdapter {
   }
 
   /**
-   * Check whether the config has default values while loading
+   * Check whether the workspace contains CMake project files
+   *
+   * Note: we don't use `"activationEvents" for that because of issue
+   * [#57](https://github.com/fredericbonnet/cmake-test-explorer/issues/57).
+   * Testing the file presence explicitly allows us to make this test
+   * programmatically
    */
-  private isDefaultConfiguration() {
-    const config = this.getWorkspaceConfiguration();
-    return !config.get<string>('buildDir');
+  private async isCmakeWorkspace() {
+    const uris = await vscode.workspace.findFiles('**/CMakeLists.txt', null, 1);
+    return !!uris.length;
   }
 
   /**
@@ -599,7 +607,10 @@ export class CmakeAdapter implements TestAdapter {
     for (const varname of ['buildType', 'buildDirectory']) {
       const command = `cmake.${varname}`;
       if ((await vscode.commands.getCommands()).includes(command)) {
-        const value = (await vscode.commands.executeCommand(command, this.workspaceFolder)) as string;
+        const value = (await vscode.commands.executeCommand(
+          command,
+          this.workspaceFolder
+        )) as string;
         substitutionMap.set(`\${${varname}}`, value);
       } else {
         // Missing variables default to empty

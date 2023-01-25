@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Revert `activationEvent` to `*` instead of `CMakeLists.txt`, as it seems to
+  fail on some systems. This fixes issue #57.
+
 ## [0.16.3] - 2022-08-15
 
 ### Fixed
