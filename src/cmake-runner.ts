@@ -23,7 +23,7 @@ const CTEST_RE = /^CMAKE_CTEST_COMMAND:INTERNAL=(.*)$/m;
 const CTEST_START_RE = /^\s+Start\s+(\d+): (.+)/;
 
 /** Regexp for test output line */
-const CTEST_OUTPUT_RE = /^(\d+): .*$/;
+const CTEST_OUTPUT_RE = /^(\d+): (.*)$/;
 
 /** Regexp for test passed line */
 const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+   Passed/;
@@ -57,6 +57,7 @@ export interface CmakeTestOutputEvent {
   type: 'output';
   index: number;
   line: string;
+  text?: string;
 }
 
 /** Test end event */
@@ -238,7 +239,8 @@ export function executeCmakeTestProcess(
           } else if ((matches = line.match(CTEST_OUTPUT_RE))) {
             // Test output
             const index = Number.parseInt(matches[1]);
-            onEvent({ type: 'output', index, line });
+            const text = matches[2];
+            onEvent({ type: 'output', index, line, text });
           } else if ((matches = line.match(CTEST_PASSED_RE))) {
             // Test passed
             const index = Number.parseInt(matches[1]);

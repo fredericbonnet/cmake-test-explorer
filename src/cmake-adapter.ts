@@ -41,7 +41,8 @@ const ROOT_SUITE_ID = '*';
 const SUITE_SUFFIX = '*';
 
 /** Regexp for detecting GCC-like error with file and line info */
-const DECORATION_RE = /^(?:\d+): ([^<].*?):(\d+):\d*:?\s+(?:fatal\s+)?(?:warning|error):\s+(.*)$/
+const DECORATION_RE =
+  /^([^<].*?):(\d+):\d*:?\s+(?:fatal\s+)?(?:warning|error):\s+(.*)$/;
 
 /**
  * CMake test adapter for the Test Explorer UI extension
@@ -342,7 +343,7 @@ export class CmakeAdapter implements TestAdapter {
               if (!outputs[event.index]) outputs[event.index] = [];
               outputs[event.index].push(event.line);
 
-              const matches = event.line.match(DECORATION_RE)
+              const matches = event.text?.match(DECORATION_RE);
               if (matches) {
                 const [, file, line, message] = matches;
 
@@ -351,7 +352,7 @@ export class CmakeAdapter implements TestAdapter {
                   file,
                   line: Number.parseInt(line) - 1,
                   message,
-                })
+                });
               }
               break;
 
