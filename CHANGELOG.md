@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2023-01-26
+
+### Added
+
+- Add decorations for error messages (thanks @appden!)
+- Add `cmakeExplorer.errorPattern` for error message capture
+
 ### Fixed
 
 - Revert `activationEvent` to `*` instead of `CMakeLists.txt`, as it seems to
@@ -148,7 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add variable substitution in settings
-- Add [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) integration
+- Add [CMake Tools][cmake-tools] integration
 
 Thanks to @andrewbridge for these contributions!
 
@@ -174,7 +181,9 @@ Thanks to @andrewbridge for these contributions!
 
 ### Fixed
 
-- Run tests with CTest instead of executing the test commands directly. This fixes a number of issues with CTest options such as `PASS_REGULAR_EXPRESSION`. Fixes issues #4 and #5.
+- Run tests with CTest instead of executing the test commands directly. This
+  fixes a number of issues with CTest options such as `PASS_REGULAR_EXPRESSION`.
+  Fixes issues #4 and #5.
 
 ## [0.3.1] - 2019-11-01
 
@@ -193,7 +202,8 @@ Thanks to @andrewbridge for these contributions!
 ### Added
 
 - Check that buildDir exists before loading tests
-- Add CTest path autodetect from CMakeCache.txt file; this should avoid useless creation of `Testing` subdirs in non-CMake project dirs
+- Add CTest path autodetect from CMakeCache.txt file; this should avoid useless
+  creation of `Testing` subdirs in non-CMake project dirs
 
 ### Changed
 
@@ -205,7 +215,14 @@ Thanks to @andrewbridge for these contributions!
 
 - First release.
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.3...HEAD
+<!-- Links -->
+
+[cmake-tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
+
+<!-- Versions -->
+
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.3...v0.17.0
 [0.16.3]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.2...v0.16.3
 [0.16.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.0...v0.16.1

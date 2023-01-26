@@ -12,10 +12,11 @@
     "HO-COOH (https://github.com/HO-COOH)",
     "Mészáros Gergely (https://github.com/Maetveis)",
     "Dominic van Berkel (https://github.com/barometz)",
-    "Tustin2121 (https://github.com/tustin2121)"
+    "Tustin2121 (https://github.com/tustin2121)",
+    "Scott Kyle (https://github.com/appden)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.16.3",
+  "version": "0.17.0",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
