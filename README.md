@@ -1,7 +1,6 @@
 # CMake Test Explorer for Visual Studio Code
 
-Run your [CMake](https://cmake.org) tests using the [Test Explorer
-UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer).
+Run your [CMake] tests using the [Test Explorer UI][test-explorer-ui].
 
 ## Features
 
@@ -23,7 +22,7 @@ UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explor
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `cmakeExplorer.buildDir`           | Location of the CMake build directory. Can be absolute or relative to the workspace. Empty means the workspace directory.                                                                                                                                                                          | `${buildDirectory}` (see [Variable substitution](#variable-substitution)) |
 | `cmakeExplorer.buildConfig`        | Name of the CMake build configuration. Can be set to any standard or custom configuration name (e.g. `Default`, `Release`, `RelWithDebInfo`, `MinSizeRel` ). Case-insensitive. Empty means no specific configuration.                                                                              | `${buildType}` (see [Variable substitution](#variable-substitution))      |
-| `cmakeExplorer.cmakeIntegration`   | Integrate with the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension for additional variables. See [Variable substitution](#variable-substitution) for more info.                                                                                 | `true`                                                                    |
+| `cmakeExplorer.cmakeIntegration`   | Integrate with the [CMake Tools][cmake-tools] extension for additional variables. See [Variable substitution](#variable-substitution) for more info.                                                                                                                                               | `true`                                                                    |
 | `cmakeExplorer.debugConfig`        | Custom debug configuration to use. See [Debugging](#debugging) for more info.                                                                                                                                                                                                                      | Empty                                                                     |
 | `cmakeExplorer.parallelJobs`       | Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable). See [Parallel test jobs](#parallel-test-jobs) for more info.                                                                                                                                                 | 0                                                                         |
 | `cmakeExplorer.extraCtestLoadArgs` | Extra command-line arguments passed to CTest at load time. For example, `-R foo` will only load the tests containing the string `foo`.                                                                                                                                                             | Empty                                                                     |
@@ -32,6 +31,7 @@ UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explor
 | `cmakeExplorer.suiteDelimiter`     | Delimiter used to split CMake test names into suite/test hierarchy. For example, if you name your tests `suite1/subsuite1/test1`, `suite1/subsuite1/test2`, `suite2/subsuite3/test4`, etc. you may set this to `/` in order to group your suites into a tree. If empty, the tests are not grouped. | Empty                                                                     |
 | `cmakeExplorer.testFileVar`        | CTest environment variable defined for a test, giving the path of the source file containing the test. See [Source files](#source-files) for more info.                                                                                                                                            | Empty                                                                     |
 | `cmakeExplorer.testLineVar`        | CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known). See [Source files](#source-files) for more info.                                                                                                                | Empty                                                                     |
+| `cmakeExplorer.errorPattern`       | Regular expression used to match error lines in test outputs. See [Error pattern](#error-pattern) for more info.                                                                                                                                                                                   | GCC-style pattern                                                         |
 
 ## Variable substitution
 
@@ -51,14 +51,12 @@ be substituted with the home path on Unix systems.
 | ------------------ | ----------------------------------------------------------------- |
 | `${env:<VARNAME>}` | The value of the environment variable `VARNAME` at session start. |
 
-_(Note: On Windows, variable names are case insensitive but must be uppercase 
+_(Note: On Windows, variable names are case insensitive but must be uppercase
 for `env:` substitition to work properly)_
 
-Additionally, if the [CMake
-Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
-extension is active in the current workspace and
-`cmakeExplorer.cmakeIntegration` is enabled, then the following variables can be
-used:
+Additionally, if the [CMake Tools][cmake-tools] extension is active in the
+current workspace and `cmakeExplorer.cmakeIntegration` is enabled, then the
+following variables can be used:
 
 | Variable            | Expansion                                                                   |
 | ------------------- | --------------------------------------------------------------------------- |
@@ -83,16 +81,12 @@ or the status bar, requires a manual test reload from the Test Explorer sidebar.
 ## Source files
 
 The Test Explorer UI has a feature to link tests with their source files. CMake
-provides the
-[`set_tests_properties()`](https://cmake.org/cmake/help/latest/command/set_tests_properties.html)
-command to associate tests with various metadata, however it only support a
-predefined [list of
-properties](https://cmake.org/cmake/help/latest/manual/cmake-properties.7.html#test-properties),
-and none of them seems suitable for this purpose. To support this feature
-anyway, the extension expects that the file path and line number be passed as
-test environment variables using the
-[`ENVIRONMENT`](https://cmake.org/cmake/help/latest/prop_test/ENVIRONMENT.html)
-property, like so:
+provides the [`set_tests_properties()`][cmake-set_tests_properties] command to
+associate tests with various metadata, however it only support a predefined
+[list of properties][cmake-test-properties], and none of them seems suitable for
+this purpose. To support this feature anyway, the extension expects that the
+file path and line number be passed as test environment variables using the
+[`ENVIRONMENT`][cmake-environment] property, like so:
 
 ```
 add_test(
@@ -119,6 +113,57 @@ but the UI and commands provided by the core Test Explorer UI extension will
 work differently (e.g. '**Run tests in current file**' instead of '**Run the
 test at the current cursor position**', no CodeLens, etc). This can be useful
 when no line number information is available (shell scripts for example).
+
+## Error pattern
+
+The `cmakeExplorer.errorPattern` setting can be used to capture error messages
+on the test output. If the `testExplorer.useNativeTesting` setting is enabled,
+the captured messages will be displayed in the file editor next to the line
+where the error occurred.
+
+This setting expects a regular expression string with the following named
+capturing groups:
+
+- `file`
+- `line`
+- `severity` (optional)
+- `message`
+
+See the [MDN documentation on regular expression groups][re-groups] for more
+information on the syntax. For example, here is the default value that captures
+GCC-style error messages:
+
+```
+^(?<file>[^<].*?):(?<line>\\d+):\\d*:?\\s+(?<severity>(?:fatal\\s+)?(?:warning|error)):\\s+(?<message>.*)$
+```
+
+This pattern will match the following error message:
+
+```
+/path/to/my/file.c:123: error: unexpected value
+```
+
+The captured groups will be:
+
+| Name       | Value                |
+| ---------- | -------------------- |
+| `file`     | `/path/to/my/file.c` |
+| `line`     | 123                  |
+| `severity` | `error`              |
+| `message`  | `unexpected value`   |
+
+The advantage of using named groups is that their order does not matter. Let's
+consider the following error message:
+
+```
+ERROR: assertion failed on line 123 (file=/path/to/my/file.c)
+```
+
+To capture this message you could use the following syntax:
+
+```
+^(?<severity>ERROR):\s+(?<message>.*)\s+on line (?<line>\d+) \(file=(?<file>.+)\)$
+```
 
 ## Debugging
 
@@ -178,12 +223,9 @@ add the following config in your `launch.json` then set
 The extension can run test jobs in parallel. The maximum number of jobs to run
 is the first non-zero value in the following order:
 
-- The `cmakeExplorer.parallelJobs` setting (see
-  [Configuration](#configuration))
+- The `cmakeExplorer.parallelJobs` setting (see [Configuration](#configuration))
 - The `cmake.ctest.parallelJobs` then `cmake.parallelJobs` settings if the
-  [CMake
-  Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
-  extension is installed
+  [CMake Tools][cmake-tools] extension is installed
 - The number of processors on the machine
 
 A negative value will disable parallel execution.
@@ -223,3 +265,13 @@ Make sure that the `cmakeExplorer.buildDir` is properly configured. By default
 its value is empty, and in this case the extension shows no error if it fails to
 find the `CMakeCache.txt` file, in order not to clutter the Test Explorer panel
 for projects that don't use CMake.
+
+<!-- Links -->
+
+[test-explorer-ui]: https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer
+[cmake-tools]: https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools
+[cmake]: https://cmake.org
+[cmake-set_tests_properties]: https://cmake.org/cmake/help/latest/command/set_tests_properties.html
+[cmake-test-properties]: https://cmake.org/cmake/help/latest/manual/cmake-properties.7.html#test-properties
+[cmake-environment]: https://cmake.org/cmake/help/latest/prop_test/ENVIRONMENT.html
+[re-groups]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences

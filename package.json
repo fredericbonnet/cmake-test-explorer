@@ -138,6 +138,12 @@
           "default": "",
           "scope": "resource"
         },
+        "cmakeExplorer.errorPattern": {
+          "description": "Regular expression used to match error lines in test outputs",
+          "type": "string",
+          "default": "^(?<file>[^<].*?):(?<line>\\d+):\\d*:?\\s+(?<severity>(?:fatal\\s+)?(?:warning|error)):\\s+(?<message>.*)$",
+          "scope": "resource"
+        },
         "cmakeExplorer.logpanel": {
           "description": "Write diagnotic logs to an output panel",
           "type": "boolean",

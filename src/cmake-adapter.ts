@@ -40,10 +40,6 @@ const ROOT_SUITE_ID = '*';
 /** Suffix for suite IDS, used to distinguish suite IDs from test IDs */
 const SUITE_SUFFIX = '*';
 
-/** Regexp for detecting GCC-like error with file and line info */
-const DECORATION_RE =
-  /^([^<].*?):(\d+):\d*:?\s+(?:fatal\s+)?(?:warning|error):\s+(.*)$/;
-
 /**
  * CMake test adapter for the Test Explorer UI extension
  */
@@ -317,7 +313,11 @@ export class CmakeAdapter implements TestAdapter {
       const options = await this.getRunOptions();
 
       // Get & substitute config settings
-      const [suiteDelimiter] = await this.getConfigStrings(['suiteDelimiter']);
+      const [suiteDelimiter, errorPattern] = await this.getConfigStrings([
+        'suiteDelimiter',
+        'errorPattern',
+      ]);
+      const errorPatternRe = new RegExp(errorPattern);
 
       // Get flat list of test indexes
       const testIndexes = this.getTestIndexes(tests, suiteDelimiter);
@@ -343,15 +343,15 @@ export class CmakeAdapter implements TestAdapter {
               if (!outputs[event.index]) outputs[event.index] = [];
               outputs[event.index].push(event.line);
 
-              const matches = event.text?.match(DECORATION_RE);
-              if (matches) {
-                const [, file, line, message] = matches;
+              const matches = event.text?.match(errorPatternRe);
+              if (matches?.groups) {
+                const { file, line, severity, message } = matches.groups;
 
                 if (!decorations[event.index]) decorations[event.index] = [];
                 decorations[event.index].push({
                   file,
                   line: Number.parseInt(line) - 1,
-                  message,
+                  message: severity ? `${severity}: ${message}` : message,
                 });
               }
               break;
