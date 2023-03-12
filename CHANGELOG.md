@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Only activate CMake Tools extension on load if workspace contains CMake
+  project files. This fixes issue #62.
+
 ## [0.17.0] - 2023-01-26
 
 ### Added

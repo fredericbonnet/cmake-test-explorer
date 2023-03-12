@@ -13,6 +13,9 @@ import { CmakeTestProcess } from './interfaces/cmake-test-process';
 
 const { split } = require('split-cmd');
 
+/** Name of CMake project file used for activation */
+const CMAKE_PROJECT_FILE = 'CMakeLists.txt';
+
 /** Name of CMake cache file in build dir */
 const CMAKE_CACHE_FILE = 'CMakeCache.txt';
 
@@ -349,4 +352,21 @@ export function getCmakeTestEnvironmentVariables(
     }
     return acc;
   }, {} as { [key: string]: string });
+}
+
+/**
+ * Check whether the workspace contains CMake project files
+ *
+ * Note: we don't use `"activationEvents" for that because of issue
+ * [#57](https://github.com/fredericbonnet/cmake-test-explorer/issues/57).
+ * Testing the file presence explicitly allows us to make this test
+ * programmatically
+ */
+export async function isCmakeWorkspace() {
+  const uris = await vscode.workspace.findFiles(
+    '**/' + CMAKE_PROJECT_FILE,
+    null,
+    1
+  );
+  return !!uris.length;
 }

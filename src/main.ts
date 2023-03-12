@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { Log, TestAdapterRegistrar } from 'vscode-test-adapter-util';
-import { CmakeAdapter } from './cmake-adapter';
+import { CmakeAdapter, isCmakeWorkspace } from './cmake-adapter';
 
 /**
  * Main extension entry point
@@ -39,7 +39,13 @@ export async function activate(context: vscode.ExtensionContext) {
       log.warn(
         `CMake integration is enabled but the CMake Tools extension is not active`
       );
-      await cmakeExtension.activate();
+      if (await isCmakeWorkspace()) {
+        // Only activate extension if the workspace contains CMake project files
+        log.info(
+          `Workspace contains CMake project files, waiting for CMake Tools extension to activate`
+        );
+        await cmakeExtension.activate();
+      }
     }
   }
 
@@ -48,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     testExplorerExtensionId
   );
   if (log.enabled)
-    log.info(`Test Explorer ${testExplorerExtension ? '' : 'not '}found`);
+    log.warn(`Test Explorer ${testExplorerExtension ? '' : 'not '}found`);
 
   if (testExplorerExtension) {
     const testHub = testExplorerExtension.exports;

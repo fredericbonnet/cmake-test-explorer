@@ -32,7 +32,9 @@ import {
   getCtestPath,
   CmakeTestEvent,
   CmakeTestRunOptions,
+  isCmakeWorkspace,
 } from './cmake-runner';
+export { isCmakeWorkspace } from './cmake-runner';
 
 /** Special ID value for the root suite */
 const ROOT_SUITE_ID = '*';
@@ -284,7 +286,7 @@ export class CmakeAdapter implements TestAdapter {
         return rootSuite;
       }
     } catch (e) {
-      if (e instanceof CacheNotFoundError && !(await this.isCmakeWorkspace())) {
+      if (e instanceof CacheNotFoundError && !(await isCmakeWorkspace())) {
         // Ignore error when extension is not activable, return empty result instead
         this.log.info(
           `Workspace does not seem to contain CMake project files, ignoring tests`
@@ -551,19 +553,6 @@ export class CmakeAdapter implements TestAdapter {
       'cmakeExplorer',
       this.workspaceFolder.uri
     );
-  }
-
-  /**
-   * Check whether the workspace contains CMake project files
-   *
-   * Note: we don't use `"activationEvents" for that because of issue
-   * [#57](https://github.com/fredericbonnet/cmake-test-explorer/issues/57).
-   * Testing the file presence explicitly allows us to make this test
-   * programmatically
-   */
-  private async isCmakeWorkspace() {
-    const uris = await vscode.workspace.findFiles('**/CMakeLists.txt', null, 1);
-    return !!uris.length;
   }
 
   /**
