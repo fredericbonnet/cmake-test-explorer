@@ -40,7 +40,7 @@ const CTEST_DISABLED_RE =
   /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Not Run \(Disabled\)/;
 
 /** Regexp for test failed line */
-const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*/;
+const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+/;
 
 /** Generic test event */
 export type CmakeTestEvent =
