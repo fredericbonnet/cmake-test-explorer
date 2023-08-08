@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2] - 2023-08-80
+
+### Fixed
+
+- Fix crashed tests not being reported as failure (thanks @philipcraig!). This
+  Fixes issues #61 and #67.
+
 ## [0.17.1] - 2023-03-12
 
 ### Fixed
@@ -224,11 +231,13 @@ Thanks to @andrewbridge for these contributions!
 
 <!-- Links -->
 
-[cmake-tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
+[cmake-tools]: https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools
 
 <!-- Versions -->
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.0...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.2...HEAD
+[0.17.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.1...v0.17.2
+[0.17.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.3...v0.17.0
 [0.16.3]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.2...v0.16.3
 [0.16.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.16.1...v0.16.2
