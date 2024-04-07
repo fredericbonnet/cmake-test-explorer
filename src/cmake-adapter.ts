@@ -90,7 +90,8 @@ export class CmakeAdapter implements TestAdapter {
 
   constructor(
     public readonly workspaceFolder: vscode.WorkspaceFolder,
-    private readonly log: Log
+    private readonly log: Log,
+    private readonly context: vscode.ExtensionContext
   ) {
     this.log.info('Initializing CMake test adapter');
 
@@ -117,6 +118,7 @@ export class CmakeAdapter implements TestAdapter {
         type: 'finished',
         errorMessage: `${e}`,
       });
+      await vscode.window.showErrorMessage(`${e}`);
     }
 
     this.state = 'idle';
@@ -218,9 +220,25 @@ export class CmakeAdapter implements TestAdapter {
         'testLineVar',
       ]);
 
-      // Load CTest test list
+      // Resolve and check CTest path
       const dir = path.resolve(this.workspaceFolder.uri.fsPath, buildDir);
-      this.ctestPath = getCtestPath(dir);
+      const ctestPath = getCtestPath(dir);
+      const currentPath = this.context.workspaceState.get('ctestPath');
+      if (currentPath != ctestPath) {
+        const answer = await vscode.window.showWarningMessage(
+          `The CMake Test Explorer extension detected the following CTest path: "${ctestPath}". Do you allow execution of this file?`,
+          'Allow',
+          'Deny'
+        );
+        if (answer != 'Allow') {
+          throw new Error(`CTest execution denied: "${ctestPath}"`);
+        }
+        // Record path for next time
+        this.context.workspaceState.update('ctestPath', ctestPath);
+      }
+
+      // Load CTest test list
+      this.ctestPath = ctestPath;
       this.cmakeTests = await loadCmakeTests(
         this.ctestPath,
         dir,
@@ -518,6 +536,9 @@ export class CmakeAdapter implements TestAdapter {
       );
     } catch (e) {
       this.log.error(`Error debugging CMake test ${id}: ${e}`);
+      await vscode.window.showErrorMessage(
+        `Error debugging CMake test ${id}: ${e}`
+      );
     } finally {
       disposables.forEach((disposable) => disposable.dispose());
     }

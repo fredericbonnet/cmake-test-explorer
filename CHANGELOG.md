@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix vulnerability issue #68 allowing code injection with shell commands on
+  malicious repositories (thanks @elizabethtl!).
+
 ## [0.17.2] - 2023-08-80
 
 ### Fixed
 
 - Fix crashed tests not being reported as failure (thanks @philipcraig!). This
-  Fixes issues #61 and #67.
+  fixes issues #61 and #67.
 
 ## [0.17.1] - 2023-03-12
 
