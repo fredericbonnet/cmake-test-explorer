@@ -14,10 +14,11 @@
     "Dominic van Berkel (https://github.com/barometz)",
     "Tustin2121 (https://github.com/tustin2121)",
     "Scott Kyle (https://github.com/appden)",
-    "Philip Craig (https://github.com/philipcraig)"
+    "Philip Craig (https://github.com/philipcraig)",
+    "Elizabeth Lin (https://github.com/elizabethtl)"
   ],
   "publisher": "fredericbonnet",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "license": "BSD-3-Clause",
   "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
   "repository": {
