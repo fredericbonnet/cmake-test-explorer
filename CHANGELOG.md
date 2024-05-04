@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.4] - 2024-05-04
+
+### Fixed
+
+- Revert previous fix for issue #68 and rely on [workspace
+  trust](https://code.visualstudio.com/docs/editor/workspace-trust) instead.
+  This addresses issue #74.
+
 ## [0.17.3] - 2024-04-08
 
 ### Fixed
@@ -242,7 +250,8 @@ Thanks to @andrewbridge for these contributions!
 
 <!-- Versions -->
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.3...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.4...HEAD
+[0.17.4]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.3...v0.17.4
 [0.17.3]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.2...v0.17.3
 [0.17.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.1...v0.17.2
 [0.17.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.0...v0.17.1
