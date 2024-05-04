@@ -63,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       new TestAdapterRegistrar(
         testHub,
-        (workspaceFolder) => new CmakeAdapter(workspaceFolder, log, context),
+        (workspaceFolder) => new CmakeAdapter(workspaceFolder, log),
         log
       )
     );
