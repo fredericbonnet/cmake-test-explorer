@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Revert previous fix for issue #68 and rely on [workspace
   trust](https://code.visualstudio.com/docs/editor/workspace-trust) instead.
-  This addresses issue #74.
+  This addresses issue #73.
 
 ## [0.17.3] - 2024-04-08
 
