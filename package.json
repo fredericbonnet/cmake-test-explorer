@@ -1,169 +1,169 @@
 {
-  "name": "cmake-test-adapter",
-  "displayName": "CMake Test Explorer",
-  "description": "Run your CMake tests in the Sidebar of Visual Studio Code",
-  "icon": "img/icon.png",
-  "author": "Frédéric Bonnet <fredericbonnet@free.fr>",
-  "contributors": [
-    "Frédéric Bonnet <fredericbonnet@free.fr>",
-    "Andrew Bridge (https://github.com/andrewbridge)",
-    "Maciej Dems (https://github.com/macdems)",
-    "dvirtz (https://github.com/dvirtz)",
-    "HO-COOH (https://github.com/HO-COOH)",
-    "Mészáros Gergely (https://github.com/Maetveis)",
-    "Dominic van Berkel (https://github.com/barometz)",
-    "Tustin2121 (https://github.com/tustin2121)",
-    "Scott Kyle (https://github.com/appden)",
-    "Philip Craig (https://github.com/philipcraig)",
-    "Elizabeth Lin (https://github.com/elizabethtl)"
-  ],
-  "publisher": "fredericbonnet",
-  "version": "0.17.4",
-  "license": "BSD-3-Clause",
-  "homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/fredericbonnet/cmake-test-explorer.git"
-  },
-  "bugs": {
-    "url": "https://github.com/fredericbonnet/cmake-test-explorer/issues"
-  },
-  "categories": [
-    "Other"
-  ],
-  "keywords": [
-    "test",
-    "testing"
-  ],
-  "main": "out/main.js",
-  "scripts": {
-    "clean": "rimraf out *.vsix",
-    "build": "tsc",
-    "watch": "tsc -w",
-    "rebuild": "npm run clean && npm run build",
-    "package": "vsce package",
-    "publish": "vsce publish"
-  },
-  "dependencies": {
-    "split-cmd": "^1.1.0",
-    "split2": "^4.2.0",
-    "tslib": "^1.14.1",
-    "vscode-test-adapter-api": "^1.9.0",
-    "vscode-test-adapter-util": "^0.7.1"
-  },
-  "devDependencies": {
-    "@types/split2": "^4.2.0",
-    "@types/vscode": "^1.62.0",
-    "prettier": "^3.5.3",
-    "rimraf": "^3.0.2",
-    "typescript": "^3.9.10",
-    "vsce": "^2.3.0"
-  },
-  "engines": {
-    "vscode": "^1.62.0"
-  },
-  "extensionDependencies": [
-    "hbenl.vscode-test-explorer"
-  ],
-  "activationEvents": [
-    "*"
-  ],
-  "contributes": {
-    "configuration": {
-      "type": "object",
-      "title": "CMake Test Explorer",
-      "properties": {
-        "cmakeExplorer.suiteDelimiter": {
-          "description": "Delimiter used to split CMake test names into suite/test hierarchy",
-          "type": "string",
-          "scope": "resource"
-        },
-        "cmakeExplorer.buildDir": {
-          "description": "The CMake build directory (relative to the workspace folder)",
-          "type": "string",
-          "default": "${buildDirectory}",
-          "scope": "resource"
-        },
-        "cmakeExplorer.buildConfig": {
-          "description": "The CMake build configuration (empty for any)",
-          "type": "string",
-          "default": "${buildType}",
-          "scope": "resource"
-        },
-        "cmakeExplorer.cmakeIntegration": {
-          "description": "Integrate with the CMake Tools extension for additional variables",
-          "type": "boolean",
-          "default": "true",
-          "scope": "resource"
-        },
-        "cmakeExplorer.debugConfig": {
-          "description": "Custom debug configuration to use (empty for default)",
-          "type": "string",
-          "default": "",
-          "scope": "resource"
-        },
-        "cmakeExplorer.parallelJobs": {
-          "description": "Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable)",
-          "type": "integer",
-          "default": 0,
-          "scope": "resource"
-        },
-        "cmakeExplorer.extraCtestLoadArgs": {
-          "description": "Extra command-line arguments passed to CTest at load time",
-          "type": "string",
-          "default": "",
-          "scope": "resource"
-        },
-        "cmakeExplorer.extraCtestRunArgs": {
-          "description": "Extra command-line arguments passed to CTest at run time",
-          "type": "string",
-          "default": "",
-          "scope": "resource"
-        },
-        "cmakeExplorer.extraCtestEnvVars": {
-          "description": "Extra environment variables passed to CTest at run time",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "default": {},
-          "scope": "resource"
-        },
-        "cmakeExplorer.testFileVar": {
-          "description": "CTest environment variable defined for a test, giving the path of the source file containing the test",
-          "type": "string",
-          "default": "",
-          "scope": "resource"
-        },
-        "cmakeExplorer.testLineVar": {
-          "description": "CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known)",
-          "type": "string",
-          "default": "",
-          "scope": "resource"
-        },
-        "cmakeExplorer.errorPattern": {
-          "description": "Regular expression used to match error lines in test outputs",
-          "type": "string",
-          "default": "^(?<file>[^<].*?):(?<line>\\d+):\\d*:?\\s+(?<severity>(?:fatal\\s+)?(?:warning|error)):\\s+(?<message>.*)$",
-          "scope": "resource"
-        },
-        "cmakeExplorer.logpanel": {
-          "description": "Write diagnotic logs to an output panel",
-          "type": "boolean",
-          "scope": "resource"
-        },
-        "cmakeExplorer.logfile": {
-          "description": "Write diagnostic logs to the given file",
-          "type": "string",
-          "scope": "resource"
-        }
-      }
-    }
-  },
-  "capabilities": {
-    "untrustedWorkspaces": {
-      "supported": false,
-      "description": "This extension requires running the CTest executable from the location specified in the CMakeCache.txt file of the workspace folder"
-    }
-  }
+	"name": "cmake-test-adapter",
+	"displayName": "CMake Test Explorer",
+	"description": "Run your CMake tests in the Sidebar of Visual Studio Code",
+	"icon": "img/icon.png",
+	"author": "Frédéric Bonnet <fredericbonnet@free.fr>",
+	"contributors": [
+		"Frédéric Bonnet <fredericbonnet@free.fr>",
+		"Andrew Bridge (https://github.com/andrewbridge)",
+		"Maciej Dems (https://github.com/macdems)",
+		"dvirtz (https://github.com/dvirtz)",
+		"HO-COOH (https://github.com/HO-COOH)",
+		"Mészáros Gergely (https://github.com/Maetveis)",
+		"Dominic van Berkel (https://github.com/barometz)",
+		"Tustin2121 (https://github.com/tustin2121)",
+		"Scott Kyle (https://github.com/appden)",
+		"Philip Craig (https://github.com/philipcraig)",
+		"Elizabeth Lin (https://github.com/elizabethtl)"
+	],
+	"publisher": "fredericbonnet",
+	"version": "0.17.4",
+	"license": "BSD-3-Clause",
+	"homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/fredericbonnet/cmake-test-explorer.git"
+	},
+	"bugs": {
+		"url": "https://github.com/fredericbonnet/cmake-test-explorer/issues"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"test",
+		"testing"
+	],
+	"main": "out/main.js",
+	"scripts": {
+		"clean": "rimraf out *.vsix",
+		"build": "tsc",
+		"watch": "tsc -w",
+		"rebuild": "npm run clean && npm run build",
+		"package": "vsce package",
+		"publish": "vsce publish"
+	},
+	"dependencies": {
+		"split-cmd": "^1.1.0",
+		"split2": "^4.2.0",
+		"tslib": "^1.14.1",
+		"vscode-test-adapter-api": "^1.9.0",
+		"vscode-test-adapter-util": "^0.7.1"
+	},
+	"devDependencies": {
+		"@types/split2": "^4.2.0",
+		"@types/vscode": "^1.62.0",
+		"prettier": "^3.5.3",
+		"rimraf": "^3.0.2",
+		"typescript": "^3.9.10",
+		"vsce": "^2.3.0"
+	},
+	"engines": {
+		"vscode": "^1.62.0"
+	},
+	"extensionDependencies": [
+		"hbenl.vscode-test-explorer"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "CMake Test Explorer",
+			"properties": {
+				"cmakeExplorer.suiteDelimiter": {
+					"description": "Delimiter used to split CMake test names into suite/test hierarchy",
+					"type": "string",
+					"scope": "resource"
+				},
+				"cmakeExplorer.buildDir": {
+					"description": "The CMake build directory (relative to the workspace folder)",
+					"type": "string",
+					"default": "${buildDirectory}",
+					"scope": "resource"
+				},
+				"cmakeExplorer.buildConfig": {
+					"description": "The CMake build configuration (empty for any)",
+					"type": "string",
+					"default": "${buildType}",
+					"scope": "resource"
+				},
+				"cmakeExplorer.cmakeIntegration": {
+					"description": "Integrate with the CMake Tools extension for additional variables",
+					"type": "boolean",
+					"default": "true",
+					"scope": "resource"
+				},
+				"cmakeExplorer.debugConfig": {
+					"description": "Custom debug configuration to use (empty for default)",
+					"type": "string",
+					"default": "",
+					"scope": "resource"
+				},
+				"cmakeExplorer.parallelJobs": {
+					"description": "Maximum number of parallel test jobs to run (zero=autodetect, 1 or negative=disable)",
+					"type": "integer",
+					"default": 0,
+					"scope": "resource"
+				},
+				"cmakeExplorer.extraCtestLoadArgs": {
+					"description": "Extra command-line arguments passed to CTest at load time",
+					"type": "string",
+					"default": "",
+					"scope": "resource"
+				},
+				"cmakeExplorer.extraCtestRunArgs": {
+					"description": "Extra command-line arguments passed to CTest at run time",
+					"type": "string",
+					"default": "",
+					"scope": "resource"
+				},
+				"cmakeExplorer.extraCtestEnvVars": {
+					"description": "Extra environment variables passed to CTest at run time",
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					},
+					"default": {},
+					"scope": "resource"
+				},
+				"cmakeExplorer.testFileVar": {
+					"description": "CTest environment variable defined for a test, giving the path of the source file containing the test",
+					"type": "string",
+					"default": "",
+					"scope": "resource"
+				},
+				"cmakeExplorer.testLineVar": {
+					"description": "CTest environment variable defined for a test, giving the line number within the file where the test definition starts (if known)",
+					"type": "string",
+					"default": "",
+					"scope": "resource"
+				},
+				"cmakeExplorer.errorPattern": {
+					"description": "Regular expression used to match error lines in test outputs",
+					"type": "string",
+					"default": "^(?<file>[^<].*?):(?<line>\\d+):\\d*:?\\s+(?<severity>(?:fatal\\s+)?(?:warning|error)):\\s+(?<message>.*)$",
+					"scope": "resource"
+				},
+				"cmakeExplorer.logpanel": {
+					"description": "Write diagnotic logs to an output panel",
+					"type": "boolean",
+					"scope": "resource"
+				},
+				"cmakeExplorer.logfile": {
+					"description": "Write diagnostic logs to the given file",
+					"type": "string",
+					"scope": "resource"
+				}
+			}
+		}
+	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": false,
+			"description": "This extension requires running the CTest executable from the location specified in the CMakeCache.txt file of the workspace folder"
+		}
+	}
 }

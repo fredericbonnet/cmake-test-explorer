@@ -171,20 +171,20 @@ The extension comes pre-configured with sensible defaults for debugging tests:
 
 ```json
 {
-  "name": "CTest",
-  "type": "cppdbg",
-  "request": "launch",
-  "windows": {
-    "type": "cppvsdbg"
-  },
-  "linux": {
-    "type": "cppdbg",
-    "MIMode": "gdb"
-  },
-  "osx": {
-    "type": "cppdbg",
-    "MIMode": "lldb"
-  }
+	"name": "CTest",
+	"type": "cppdbg",
+	"request": "launch",
+	"windows": {
+		"type": "cppvsdbg"
+	},
+	"linux": {
+		"type": "cppdbg",
+		"MIMode": "gdb"
+	},
+	"osx": {
+		"type": "cppdbg",
+		"MIMode": "lldb"
+	}
 }
 ```
 
@@ -208,13 +208,13 @@ add the following config in your `launch.json` then set
 
 ```json
 {
-  "name": "myCustomDebugConfig",
-  "type": "cppdbg",
-  "request": "launch",
-  "stopAtEntry": true,
-  "windows": {
-    "type": "cppvsdbg"
-  }
+	"name": "myCustomDebugConfig",
+	"type": "cppdbg",
+	"request": "launch",
+	"stopAtEntry": true,
+	"windows": {
+		"type": "cppvsdbg"
+	}
 }
 ```
 
@@ -247,17 +247,17 @@ test list.
 
 - `SyntaxError: Unexpected token T in JSON at position 0`
 
-  The extension requires CTest option `--show-only=json-v1` to load the test
-  list. This option was introduced with CMake version 3.14. Make sure to use a
-  version that supports this flag. See issue #2.
+    The extension requires CTest option `--show-only=json-v1` to load the test
+    list. This option was introduced with CMake version 3.14. Make sure to use a
+    version that supports this flag. See issue #2.
 
 - `Error: CMake cache file /path/to/project/${buildDirectory}/CMakeCache.txt does not exist`
 
-  The `cmakeExplorer.cmakeIntegration` flag is enabled by default. This adds
-  support for extra variables in other settings (See [Variable
-  substitution](#variable-substitution) for more info). If the extension is not
-  installed or active then these variables are not substituted. You can activate
-  the extension's log panel in the settings for more details.
+    The `cmakeExplorer.cmakeIntegration` flag is enabled by default. This adds
+    support for extra variables in other settings (See [Variable
+    substitution](#variable-substitution) for more info). If the extension is not
+    installed or active then these variables are not substituted. You can activate
+    the extension's log panel in the settings for more details.
 
 ### The Test Explorer panel shows no error but the test list is empty
 

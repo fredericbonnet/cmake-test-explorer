@@ -33,53 +33,53 @@ const CTEST_PASSED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+   Passed/;
 
 /** Regexp for test skipped line */
 const CTEST_SKIPPED_RE =
-  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Skipped/;
+	/^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Skipped/;
 
 /** Regexp for test disabled line */
 const CTEST_DISABLED_RE =
-  /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Not Run \(Disabled\)/;
+	/^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+\*\*\*Not Run \(Disabled\)/;
 
 /** Regexp for test failed line */
 const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+/;
 
 /** Generic test event */
 export type CmakeTestEvent =
-  | CmakeTestStartEvent
-  | CmakeTestOutputEvent
-  | CmakeTestEndEvent;
+	| CmakeTestStartEvent
+	| CmakeTestOutputEvent
+	| CmakeTestEndEvent;
 
 /** Test start event */
 export interface CmakeTestStartEvent {
-  type: 'start';
-  index: number;
-  name: string;
+	type: 'start';
+	index: number;
+	name: string;
 }
 
 /** Test output event */
 export interface CmakeTestOutputEvent {
-  type: 'output';
-  index: number;
-  line: string;
-  text?: string;
+	type: 'output';
+	index: number;
+	line: string;
+	text?: string;
 }
 
 /** Test end event */
 export interface CmakeTestEndEvent {
-  type: 'end';
-  index: number;
-  name: string;
-  state: 'passed' | 'failed' | 'skipped';
+	type: 'end';
+	index: number;
+	name: string;
+	state: 'passed' | 'failed' | 'skipped';
 }
 
 /** Error thrown when CMake cache file is not found in build dir */
 export class CacheNotFoundError extends Error {
-  /** @see https://github.com/microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work */
-  constructor(m: string) {
-    super(m);
+	/** @see https://github.com/microsoft/TypeScript-wiki/blob/master/Breaking-Changes.md#extending-built-ins-like-error-array-and-map-may-no-longer-work */
+	constructor(m: string) {
+		super(m);
 
-    // Set the prototype explicitly.
-    Object.setPrototypeOf(this, CacheNotFoundError.prototype);
-  }
+		// Set the prototype explicitly.
+		Object.setPrototypeOf(this, CacheNotFoundError.prototype);
+	}
 }
 
 /**
@@ -91,82 +91,82 @@ export class CacheNotFoundError extends Error {
  * @param extraArgs Extra arguments passed to CTest
  */
 export function loadCmakeTests(
-  ctestPath: string,
-  cwd: string,
-  buildConfig?: string,
-  extraArgs: string = ''
+	ctestPath: string,
+	cwd: string,
+	buildConfig?: string,
+	extraArgs: string = ''
 ): Promise<CmakeTestInfo[]> {
-  return new Promise<CmakeTestInfo[]>((resolve, reject) => {
-    try {
-      // Check that cwd directory exists
-      // Note: statSync will throw an error if path doesn't exist
-      if (!fs.statSync(cwd).isDirectory()) {
-        throw new Error(`Directory '${cwd}' does not exist`);
-      }
+	return new Promise<CmakeTestInfo[]>((resolve, reject) => {
+		try {
+			// Check that cwd directory exists
+			// Note: statSync will throw an error if path doesn't exist
+			if (!fs.statSync(cwd).isDirectory()) {
+				throw new Error(`Directory '${cwd}' does not exist`);
+			}
 
-      // Split args string into array for spawn
-      const args = split(extraArgs);
+			// Split args string into array for spawn
+			const args = split(extraArgs);
 
-      // Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
-      const ctestProcess = child_process.spawn(
-        ctestPath,
-        [
-          '--show-only=json-v1',
-          ...(!!buildConfig ? ['--build-config', buildConfig] : []),
-          ...args,
-        ],
-        { cwd }
-      );
-      if (!ctestProcess.pid) {
-        // Something failed, e.g. the executable or cwd doesn't exist
-        throw new Error(`Cannot spawn command '${ctestPath}'`);
-      }
+			// Execute the ctest command with `--show-only=json-v1` option to get the test list in JSON format
+			const ctestProcess = child_process.spawn(
+				ctestPath,
+				[
+					'--show-only=json-v1',
+					...(!!buildConfig ? ['--build-config', buildConfig] : []),
+					...args,
+				],
+				{ cwd }
+			);
+			if (!ctestProcess.pid) {
+				// Something failed, e.g. the executable or cwd doesn't exist
+				throw new Error(`Cannot spawn command '${ctestPath}'`);
+			}
 
-      // Capture result on stdout
-      const out: string[] = [];
-      ctestProcess.stdout
-        .on('data', (data) => out.push(data))
-        .on('end', () => {
-          try {
-            const data = JSON.parse(out.join(''));
-            const tests: CmakeTestInfo[] = data.tests;
-            resolve(tests as CmakeTestInfo[]);
-          } catch (e) {
-            reject(
-              new Error(
-                `Error parsing test list - Make sure to use a version of CTest >= 3.14 that supports option '--show-only=json-v1'`
-              )
-            );
-          }
-        })
-        .on('error', (error: Error) => reject(error));
-    } catch (e) {
-      reject(e);
-    }
-  });
+			// Capture result on stdout
+			const out: string[] = [];
+			ctestProcess.stdout
+				.on('data', (data) => out.push(data))
+				.on('end', () => {
+					try {
+						const data = JSON.parse(out.join(''));
+						const tests: CmakeTestInfo[] = data.tests;
+						resolve(tests as CmakeTestInfo[]);
+					} catch (e) {
+						reject(
+							new Error(
+								`Error parsing test list - Make sure to use a version of CTest >= 3.14 that supports option '--show-only=json-v1'`
+							)
+						);
+					}
+				})
+				.on('error', (error: Error) => reject(error));
+		} catch (e) {
+			reject(e);
+		}
+	});
 }
 
 /**
  * Cmake test run options
  */
 export type CmakeTestRunOptions = {
-  /** CTest command path */
-  ctestPath: string;
+	/** CTest command path */
+	ctestPath: string;
 
-  /** CMake build directory to run the command within */
-  cwd: string;
+	/** CMake build directory to run the command within */
+	cwd: string;
 
-  /** Environment */
-  env: NodeJS.ProcessEnv;
+	/** Environment */
+	env: NodeJS.ProcessEnv;
 
-  /** Number of jobs to run in parallel */
-  parallelJobs: number;
+	/** Number of jobs to run in parallel */
+	parallelJobs: number;
 
-  /** Build configuration (may be empty) */
-  buildConfig: string;
+	/** Build configuration (may be empty) */
+	buildConfig: string;
 
-  /** Extra arguments passed to CTest */
-  extraArgs: string;
+	/** Extra arguments passed to CTest */
+	extraArgs: string;
 };
 
 /**
@@ -176,43 +176,43 @@ export type CmakeTestRunOptions = {
  * @param options Run options
  */
 export function scheduleCmakeTestProcess(
-  testIndexes: number[],
-  {
-    ctestPath,
-    cwd,
-    env,
-    parallelJobs,
-    buildConfig,
-    extraArgs,
-  }: CmakeTestRunOptions
+	testIndexes: number[],
+	{
+		ctestPath,
+		cwd,
+		env,
+		parallelJobs,
+		buildConfig,
+		extraArgs,
+	}: CmakeTestRunOptions
 ): CmakeTestProcess {
-  // Build options
-  const testList = testIndexes.length
-    ? ['-I', `0,0,0,${testIndexes.join(',')}`]
-    : [];
-  const jobs = parallelJobs > 1 ? ['-j', parallelJobs] : [];
+	// Build options
+	const testList = testIndexes.length
+		? ['-I', `0,0,0,${testIndexes.join(',')}`]
+		: [];
+	const jobs = parallelJobs > 1 ? ['-j', parallelJobs] : [];
 
-  // Split args string into array for spawn
-  const args = split(extraArgs);
+	// Split args string into array for spawn
+	const args = split(extraArgs);
 
-  const testProcess = child_process.spawn(
-    ctestPath,
+	const testProcess = child_process.spawn(
+		ctestPath,
 
-    [
-      ...(!!buildConfig ? ['--build-config', buildConfig] : []),
-      '-V',
-      ...jobs,
-      ...testList,
-      ...args,
-    ],
-    { cwd, env }
-  );
-  if (!testProcess.pid) {
-    // Something failed, e.g. the executable or cwd doesn't exist
-    throw new Error(`Cannot run tests`);
-  }
+		[
+			...(!!buildConfig ? ['--build-config', buildConfig] : []),
+			'-V',
+			...jobs,
+			...testList,
+			...args,
+		],
+		{ cwd, env }
+	);
+	if (!testProcess.pid) {
+		// Something failed, e.g. the executable or cwd doesn't exist
+		throw new Error(`Cannot run tests`);
+	}
 
-  return testProcess;
+	return testProcess;
 }
 
 /**
@@ -222,59 +222,59 @@ export function scheduleCmakeTestProcess(
  * @param onEvent Event callback
  */
 export function executeCmakeTestProcess(
-  testProcess: CmakeTestProcess,
-  onEvent: (event: CmakeTestEvent) => void
+	testProcess: CmakeTestProcess,
+	onEvent: (event: CmakeTestEvent) => void
 ): Promise<CmakeTestResult> {
-  return new Promise<CmakeTestResult>((resolve, reject) => {
-    try {
-      // Capture result on stdout
-      testProcess.stdout
-        .pipe(split2())
-        .on('data', (line: string) => {
-          // Parse each output line and raise matching events
-          let matches;
-          if ((matches = line.match(CTEST_START_RE))) {
-            // Test start
-            const index = Number.parseInt(matches[1]);
-            const name = matches[2];
-            onEvent({ type: 'start', index, name });
-            onEvent({ type: 'output', index, line });
-          } else if ((matches = line.match(CTEST_OUTPUT_RE))) {
-            // Test output
-            const index = Number.parseInt(matches[1]);
-            const text = matches[2];
-            onEvent({ type: 'output', index, line, text });
-          } else if ((matches = line.match(CTEST_PASSED_RE))) {
-            // Test passed
-            const index = Number.parseInt(matches[1]);
-            const name = matches[2];
-            onEvent({ type: 'output', index, line });
-            onEvent({ type: 'end', index, name, state: 'passed' });
-          } else if (
-            (matches = line.match(CTEST_SKIPPED_RE)) ||
-            (matches = line.match(CTEST_DISABLED_RE))
-          ) {
-            // Test skipped or disabled
-            const index = Number.parseInt(matches[1]);
-            const name = matches[2];
-            onEvent({ type: 'output', index, line });
-            onEvent({ type: 'end', index, name, state: 'skipped' });
-          } else if ((matches = line.match(CTEST_FAILED_RE))) {
-            // Test failed
-            const index = Number.parseInt(matches[1]);
-            const name = matches[2];
-            onEvent({ type: 'output', index, line });
-            onEvent({ type: 'end', index, name, state: 'failed' });
-          }
-        })
-        .on('end', () => {
-          // All done
-          resolve({ code: testProcess.exitCode });
-        });
-    } catch (e) {
-      reject(e);
-    }
-  });
+	return new Promise<CmakeTestResult>((resolve, reject) => {
+		try {
+			// Capture result on stdout
+			testProcess.stdout
+				.pipe(split2())
+				.on('data', (line: string) => {
+					// Parse each output line and raise matching events
+					let matches;
+					if ((matches = line.match(CTEST_START_RE))) {
+						// Test start
+						const index = Number.parseInt(matches[1]);
+						const name = matches[2];
+						onEvent({ type: 'start', index, name });
+						onEvent({ type: 'output', index, line });
+					} else if ((matches = line.match(CTEST_OUTPUT_RE))) {
+						// Test output
+						const index = Number.parseInt(matches[1]);
+						const text = matches[2];
+						onEvent({ type: 'output', index, line, text });
+					} else if ((matches = line.match(CTEST_PASSED_RE))) {
+						// Test passed
+						const index = Number.parseInt(matches[1]);
+						const name = matches[2];
+						onEvent({ type: 'output', index, line });
+						onEvent({ type: 'end', index, name, state: 'passed' });
+					} else if (
+						(matches = line.match(CTEST_SKIPPED_RE)) ||
+						(matches = line.match(CTEST_DISABLED_RE))
+					) {
+						// Test skipped or disabled
+						const index = Number.parseInt(matches[1]);
+						const name = matches[2];
+						onEvent({ type: 'output', index, line });
+						onEvent({ type: 'end', index, name, state: 'skipped' });
+					} else if ((matches = line.match(CTEST_FAILED_RE))) {
+						// Test failed
+						const index = Number.parseInt(matches[1]);
+						const name = matches[2];
+						onEvent({ type: 'output', index, line });
+						onEvent({ type: 'end', index, name, state: 'failed' });
+					}
+				})
+				.on('end', () => {
+					// All done
+					resolve({ code: testProcess.exitCode });
+				});
+		} catch (e) {
+			reject(e);
+		}
+	});
 }
 
 /**
@@ -283,7 +283,7 @@ export function executeCmakeTestProcess(
  * @param testProcess Scheduled test process
  */
 export function cancelCmakeTestProcess(testProcess: CmakeTestProcess) {
-  testProcess.kill();
+	testProcess.kill();
 }
 
 /**
@@ -292,21 +292,21 @@ export function cancelCmakeTestProcess(testProcess: CmakeTestProcess) {
  * @param test Test to debug
  */
 export function getCmakeTestDebugConfiguration(
-  test: CmakeTestInfo
+	test: CmakeTestInfo
 ): Partial<vscode.DebugConfiguration> {
-  const [command, ...args] = test.command;
-  const WORKING_DIRECTORY = test.properties.find(
-    (p) => p.name === 'WORKING_DIRECTORY'
-  );
-  const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
-  const env = getCmakeTestEnvironmentVariables(test);
-  return {
-    name: `CTest ${test.name}`,
-    program: command,
-    args,
-    cwd,
-    env,
-  };
+	const [command, ...args] = test.command;
+	const WORKING_DIRECTORY = test.properties.find(
+		(p) => p.name === 'WORKING_DIRECTORY'
+	);
+	const cwd = WORKING_DIRECTORY ? WORKING_DIRECTORY.value : undefined;
+	const env = getCmakeTestEnvironmentVariables(test);
+	return {
+		name: `CTest ${test.name}`,
+		program: command,
+		args,
+		cwd,
+		env,
+	};
 }
 
 /**
@@ -315,23 +315,23 @@ export function getCmakeTestDebugConfiguration(
  * @param cwd CMake build directory to run the command within
  */
 export function getCtestPath(cwd: string) {
-  // Check that CMakeCache.txt file exists in cwd
-  const cacheFilePath = path.join(cwd, CMAKE_CACHE_FILE);
-  if (!fs.existsSync(cacheFilePath)) {
-    throw new CacheNotFoundError(
-      `CMake cache file ${cacheFilePath} does not exist`
-    );
-  }
+	// Check that CMakeCache.txt file exists in cwd
+	const cacheFilePath = path.join(cwd, CMAKE_CACHE_FILE);
+	if (!fs.existsSync(cacheFilePath)) {
+		throw new CacheNotFoundError(
+			`CMake cache file ${cacheFilePath} does not exist`
+		);
+	}
 
-  // Extract CTest path from cache file.
-  const match = fs.readFileSync(cacheFilePath).toString().match(CTEST_RE);
-  if (!match) {
-    throw new Error(
-      `CTest path not found in CMake cache file ${cacheFilePath}`
-    );
-  }
+	// Extract CTest path from cache file.
+	const match = fs.readFileSync(cacheFilePath).toString().match(CTEST_RE);
+	if (!match) {
+		throw new Error(
+			`CTest path not found in CMake cache file ${cacheFilePath}`
+		);
+	}
 
-  return match[1];
+	return match[1];
 }
 /**
  * Get environment variables defined for a CMake test
@@ -339,19 +339,22 @@ export function getCtestPath(cwd: string) {
  * @param test CMake test info
  */
 export function getCmakeTestEnvironmentVariables(
-  test: CmakeTestInfo
+	test: CmakeTestInfo
 ): NodeJS.ProcessEnv | undefined {
-  const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
-  if (!ENVIRONMENT) return;
+	const ENVIRONMENT = test.properties.find((p) => p.name === 'ENVIRONMENT');
+	if (!ENVIRONMENT) return;
 
-  const value = ENVIRONMENT.value as string[];
-  return value.reduce((acc, v) => {
-    const m = v.match(/^(.*)=(.*)$/);
-    if (m) {
-      acc[m[1]] = m[2];
-    }
-    return acc;
-  }, {} as { [key: string]: string });
+	const value = ENVIRONMENT.value as string[];
+	return value.reduce(
+		(acc, v) => {
+			const m = v.match(/^(.*)=(.*)$/);
+			if (m) {
+				acc[m[1]] = m[2];
+			}
+			return acc;
+		},
+		{} as { [key: string]: string }
+	);
 }
 
 /**
@@ -363,10 +366,10 @@ export function getCmakeTestEnvironmentVariables(
  * programmatically
  */
 export async function isCmakeWorkspace() {
-  const uris = await vscode.workspace.findFiles(
-    '**/' + CMAKE_PROJECT_FILE,
-    null,
-    1
-  );
-  return !!uris.length;
+	const uris = await vscode.workspace.findFiles(
+		'**/' + CMAKE_PROJECT_FILE,
+		null,
+		1
+	);
+	return !!uris.length;
 }

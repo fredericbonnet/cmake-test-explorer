@@ -8,11 +8,11 @@
  * @remarks We only declare the subset we need
  */
 export interface CmakeTestInfo {
-  name: string;
-  config: string;
-  command: string[];
-  properties: {
-    name: string;
-    value: string | string[];
-  }[];
+	name: string;
+	config: string;
+	command: string[];
+	properties: {
+		name: string;
+		value: string | string[];
+	}[];
 }
