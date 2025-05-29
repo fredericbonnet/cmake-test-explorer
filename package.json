@@ -45,16 +45,16 @@
     "publish": "vsce publish"
   },
   "dependencies": {
-    "split-cmd": "^1.0.1",
-    "split2": "^3.2.2",
+    "split-cmd": "^1.1.0",
+    "split2": "^4.2.0",
     "tslib": "^1.14.1",
     "vscode-test-adapter-api": "^1.9.0",
     "vscode-test-adapter-util": "^0.7.1"
   },
   "devDependencies": {
-    "@types/split2": "^3.2.1",
+    "@types/split2": "^4.2.0",
     "@types/vscode": "^1.62.0",
-    "prettier": "^2.4.1",
+    "prettier": "^3.5.3",
     "rimraf": "^3.0.2",
     "typescript": "^3.9.10",
     "vsce": "^2.3.0"
