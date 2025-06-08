@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { Log, TestAdapterRegistrar } from 'vscode-test-adapter-util';
 import { CmakeAdapter, isCmakeWorkspace } from './cmake-adapter';
+import { createCmakeController } from './cmake-controller';
 
 /**
  * Main extension entry point
@@ -13,6 +14,14 @@ import { CmakeAdapter, isCmakeWorkspace } from './cmake-adapter';
  * Code is from the vscode-example-test-adapter extension template
  */
 export async function activate(context: vscode.ExtensionContext) {
+	const controller = createCmakeController();
+	context.subscriptions.push(controller);
+
+	//
+	//
+	//
+	//
+
 	const workspaceFolder = (vscode.workspace.workspaceFolders || [])[0];
 
 	// create a simple logger that can be configured with the configuration variables

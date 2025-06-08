@@ -17,7 +17,7 @@ const { split } = require('split-cmd');
 const CMAKE_PROJECT_FILE = 'CMakeLists.txt';
 
 /** Name of CMake cache file in build dir */
-const CMAKE_CACHE_FILE = 'CMakeCache.txt';
+export const CMAKE_CACHE_FILE = 'CMakeCache.txt';
 
 /** Regexp for CTest path in CMake cache file */
 const CTEST_RE = /^CMAKE_CTEST_COMMAND:INTERNAL=(.*)$/m;
@@ -322,17 +322,24 @@ export function getCtestPath(cwd: string) {
 			`CMake cache file ${cacheFilePath} does not exist`
 		);
 	}
+	return extractCtestPath(cacheFilePath);
+}
 
-	// Extract CTest path from cache file.
+/**
+ * Extract CTest path from cache file.
+ *
+ * @param cacheFilePath Path of the CMake cache file
+ */
+export function extractCtestPath(cacheFilePath: string) {
 	const match = fs.readFileSync(cacheFilePath).toString().match(CTEST_RE);
 	if (!match) {
 		throw new Error(
 			`CTest path not found in CMake cache file ${cacheFilePath}`
 		);
 	}
-
 	return match[1];
 }
+
 /**
  * Get environment variables defined for a CMake test
  *
