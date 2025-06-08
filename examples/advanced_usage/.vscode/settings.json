@@ -1,0 +1,8 @@
+{
+	"cmakeExplorer.buildConfig": "debug",
+	"cmakeExplorer.buildDir": "build",
+	"cmakeExplorer.errorPattern": "^(?<file>[^<]+)\\((?<line>\\d+)\\):\\s+(?<severity>[^:]+):\\s+(?<message>.*)$",
+	"cmakeExplorer.testFileVar": "TEST_FILE",
+	"cmakeExplorer.testLineVar": "TEST_LINE",
+	"cmakeExplorer.suiteDelimiter": ":"
+}
