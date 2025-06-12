@@ -1,26 +1,27 @@
 /**
- * @file CMake test conroller
+ * @file CMake test controller
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import {
 	extractCtestPath,
 	loadCmakeTests,
-	// scheduleCmakeTestProcess,
-	// executeCmakeTestProcess,
-	// cancelCmakeTestProcess,
-	// getCmakeTestDebugConfiguration,
+	scheduleCmakeTestProcess,
+	executeCmakeTestProcess,
+	cancelCmakeTestProcess,
+	getCmakeTestDebugConfiguration,
 	getCmakeTestEnvironmentVariables,
 	CMAKE_CACHE_FILE,
-	// CacheNotFoundError,
-	// getCtestPath,
-	// CmakeTestEvent,
-	// CmakeTestRunOptions,
-	// isCmakeWorkspace,
+	CmakeTestRunOptions,
+	CmakeTestEvent,
 } from './cmake-runner';
 
+/**
+ * Create CMake test controller
+ */
 export function createCmakeController() {
 	const controller = vscode.tests.createTestController(
 		'cmakeTestExplorer',
@@ -37,10 +38,29 @@ export function createCmakeController() {
 	controller.refreshHandler = async () => {
 		await loadTestsFromAllWorkspaceFolders(controller);
 	};
+	controller.createRunProfile(
+		'Run',
+		vscode.TestRunProfileKind.Run,
+		async (request, token) => {
+			await runTests(controller, request, token);
+		}
+	);
+	controller.createRunProfile(
+		'Debug',
+		vscode.TestRunProfileKind.Debug,
+		async (request, token) => {
+			await debugTests(controller, request, token);
+		}
+	);
 
 	return controller;
 }
 
+/**
+ * Load tests from all workspace folders
+ *
+ * @param controller Test controller
+ */
 function loadTestsFromAllWorkspaceFolders(controller: vscode.TestController) {
 	controller.items.replace([]);
 	return Promise.all(
@@ -50,6 +70,9 @@ function loadTestsFromAllWorkspaceFolders(controller: vscode.TestController) {
 	);
 }
 
+/**
+ * Get workspace cache file patterns
+ */
 function getWorkspaceCacheFilePatterns() {
 	if (!vscode.workspace.workspaceFolders) {
 		return [];
@@ -64,6 +87,13 @@ function getWorkspaceCacheFilePatterns() {
 	}));
 }
 
+/**
+ * Load tests from cache file pattern
+ *
+ * @param controller Test controller
+ * @param workspaceFolder Workspace folder
+ * @param pattern Cache file pattern
+ */
 async function loadTestsFromCacheFilePattern(
 	controller: vscode.TestController,
 	workspaceFolder: vscode.WorkspaceFolder,
@@ -74,13 +104,13 @@ async function loadTestsFromCacheFilePattern(
 	}
 }
 
-interface TestData {
-	uri: vscode.Uri;
-	ctestPath: string;
-}
-
-export const testData = new WeakMap<vscode.TestItem, TestData>();
-
+/**
+ * Load tests from cache file
+ *
+ * @param controller Test controller
+ * @param workspaceFolder Workspace folder
+ * @param uri Cache file URI
+ */
 async function loadTestsFromCacheFile(
 	controller: vscode.TestController,
 	workspaceFolder: vscode.WorkspaceFolder,
@@ -88,14 +118,12 @@ async function loadTestsFromCacheFile(
 ) {
 	// Get & substitute config settings
 	const [
-		// buildDir,
 		buildConfig,
 		extraCtestLoadArgs,
 		suiteDelimiter,
 		testFileVar,
 		testLineVar,
 	] = await getConfigStrings(workspaceFolder, [
-		// 'buildDir',
 		'buildConfig',
 		'extraCtestLoadArgs',
 		'suiteDelimiter',
@@ -162,6 +190,438 @@ async function loadTestsFromCacheFile(
 }
 
 /**
+ * Run tests
+ *
+ * @param controller Test controller
+ * @param request Test run request
+ * @param token Cancellation token
+ */
+async function runTests(
+	controller: vscode.TestController,
+	request: vscode.TestRunRequest,
+	token: vscode.CancellationToken
+) {
+	// Create a test run to record results
+	const run = controller.createTestRun(request);
+	try {
+		if (!request.include) {
+			// Run all tests - collect all root items (one per CMakeCache.txt)
+			for (const [_, rootItem] of controller.items) {
+				await runTestsForRoot(run, rootItem, token);
+			}
+		} else {
+			// Collect test items grouped by root
+			const itemsByRoot = collectTestItemsByRoot(request.include);
+
+			// Run each group
+			for (const [root, tests] of itemsByRoot) {
+				await runTestsForRoot(run, root, token, tests);
+			}
+		}
+	} finally {
+		run.end();
+	}
+}
+
+/**
+ * Run tests for root item
+ *
+ * @param run Test run
+ * @param root Root test item
+ * @param token Cancellation token
+ * @param testsToRun Optional list of tests to run
+ */
+async function runTestsForRoot(
+	run: vscode.TestRun,
+	root: vscode.TestItem,
+	token: vscode.CancellationToken,
+	testsToRun?: vscode.TestItem[]
+) {
+	if (!root.uri) return; // Should never happen
+
+	try {
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
+		if (!workspaceFolder) return;
+		// Get options including CTest path, config, env vars, etc.
+		const cwd = path.dirname(root.uri.fsPath);
+		const ctestPath = extractCtestPath(root.uri.fsPath);
+		const options = await getRunOptions(ctestPath, workspaceFolder, cwd);
+
+		// Convert tests to flat array of names
+		let testIds: number[] = [];
+		if (testsToRun) {
+			const allTests = await loadCmakeTests(
+				ctestPath,
+				cwd,
+				options.buildConfig,
+				''
+			);
+			testIds = testsToRun.map(
+				(test) => allTests.findIndex((t) => t.name === test.id) + 1
+			);
+		}
+
+		// Schedule and run tests
+		const testProcess = scheduleCmakeTestProcess(testIds, options);
+
+		// Handle cancellation
+		token.onCancellationRequested(() => {
+			cancelCmakeTestProcess(testProcess);
+		});
+
+		// Run tests and collect output
+		const outputs = new Map<number, string[]>();
+		await executeCmakeTestProcess(testProcess, (event: CmakeTestEvent) => {
+			switch (event.type) {
+				case 'start': {
+					// Find test item by name
+					const testItem = findTestItem(root, event.name);
+					if (testItem) {
+						run.started(testItem);
+					}
+					break;
+				}
+
+				case 'output': {
+					// Collect output lines
+					if (!outputs.has(event.index)) {
+						outputs.set(event.index, []);
+					}
+					outputs.get(event.index)?.push(event.line);
+					break;
+				}
+
+				case 'end': {
+					// Find test item by name
+					const testItem = findTestItem(root, event.name);
+					if (!testItem) break; // Get accumulated output
+					const message = outputs.get(event.index)?.join('\r\n');
+					const testMessage = message
+						? new vscode.TestMessage(message)
+						: undefined; // Update test state
+					switch (event.state) {
+						case 'passed':
+							run.passed(testItem);
+							if (message) {
+								run.appendOutput(message);
+							}
+							break;
+						case 'failed':
+							run.failed(
+								testItem,
+								testMessage
+									? [testMessage]
+									: [new vscode.TestMessage('Test failed')]
+							);
+							if (message) {
+								run.appendOutput(message);
+							}
+							break;
+						case 'skipped':
+							run.skipped(testItem);
+							if (message) {
+								run.appendOutput(message);
+							}
+							break;
+					}
+					break;
+				}
+			}
+		});
+	} catch (e) {
+		// Mark all tests as errored
+		const errorMessage = new vscode.TestMessage(`${e}`);
+		if (testsToRun) {
+			for (const test of testsToRun) {
+				run.errored(test, [errorMessage]);
+			}
+		} else {
+			const allTests = collectTestItems(root);
+			for (const test of allTests) {
+				run.errored(test, [errorMessage]);
+			}
+		}
+	}
+}
+
+/**
+ * Collect test items grouped by root
+ *
+ * @param include Test items to include with their children
+ *
+ * @return Leaf test items grouped by root
+ */
+function collectTestItemsByRoot(include: readonly vscode.TestItem[]) {
+	const itemsByRoot = new Map<vscode.TestItem, vscode.TestItem[]>();
+	for (const item of include) {
+		// Get root by traversing up the tree
+		let root = item;
+		while (root.parent) {
+			root = root.parent;
+		}
+
+		// Get all leaf test items under this item
+		const leafTests = collectTestItems(item);
+
+		// Add tests to the root's collection
+		let tests = itemsByRoot.get(root) || [];
+		tests.push(...leafTests);
+		itemsByRoot.set(root, tests);
+	}
+	return itemsByRoot;
+}
+
+/**
+ * Collect test items under an item
+ *
+ * @param item Test item
+ *
+ * @return List of leaf test items
+ */
+function collectTestItems(item: vscode.TestItem): vscode.TestItem[] {
+	if (item.children.size == 0) {
+		return [item];
+	}
+	const results: vscode.TestItem[] = [];
+	item.children.forEach((child) => {
+		if (child.children.size === 0) {
+			// Leaf = test
+			results.push(child);
+		} else {
+			// Non-leaf = suite
+			results.push(...collectTestItems(child));
+		}
+	});
+	return results;
+}
+
+/**
+ * Find test item by name
+ *
+ * @param root Root test item
+ * @param name Test name
+ *
+ * @return Test item or undefined
+ */
+function findTestItem(
+	root: vscode.TestItem,
+	name: string
+): vscode.TestItem | undefined {
+	if (root.id === name) return root;
+	let result: vscode.TestItem | undefined;
+	root.children.forEach((child) => {
+		const found = findTestItem(child, name);
+		if (found) result = found;
+	});
+	return result;
+}
+
+/**
+ * Get test run options
+ *
+ * @param ctestPath The path to the CTest executable
+ * @param workspaceFolder The workspace folder containing the tests
+ * @param cwd The working directory for CTest
+ *
+ * @return Run options
+ */
+async function getRunOptions(
+	ctestPath: string,
+	workspaceFolder: vscode.WorkspaceFolder,
+	cwd: string
+): Promise<CmakeTestRunOptions> {
+	// Get & substitute config settings
+	const [buildConfig, extraCtestRunArgs] = await getConfigStrings(
+		workspaceFolder,
+		['buildConfig', 'extraCtestRunArgs']
+	);
+	const extraCtestEnvVars = await getConfigObject(
+		workspaceFolder,
+		'extraCtestEnvVars'
+	);
+	const parallelJobs = getParallelJobs(workspaceFolder);
+
+	return {
+		ctestPath,
+		cwd,
+		env: mergeVariablesIntoProcessEnv(extraCtestEnvVars),
+		parallelJobs,
+		buildConfig,
+		extraArgs: extraCtestRunArgs,
+	};
+}
+
+/**
+ * Debug tests
+ *
+ * @param controller Test controller
+ * @param request Test run request
+ * @param token Cancellation token
+ */
+async function debugTests(
+	controller: vscode.TestController,
+	request: vscode.TestRunRequest,
+	token: vscode.CancellationToken
+) {
+	if (!request.include?.length) return;
+
+	try {
+		// Collect test items grouped by root
+		const itemsByRoot = collectTestItemsByRoot(request.include);
+
+		// Debug each group
+		for (const [root, tests] of itemsByRoot) {
+			await debugTestsForRoot(root, token, tests);
+		}
+	} catch (e) {
+		await vscode.window.showErrorMessage(
+			`Error debugging CMake tests: ${e}`
+		);
+	}
+}
+
+/**
+ * Debug tests for root item
+ *
+ * @param root Root test item
+ * @param token Cancellation token
+ * @param testsToRun List of tests to debug
+ */
+async function debugTestsForRoot(
+	root: vscode.TestItem,
+	token: vscode.CancellationToken,
+	testsToRun: vscode.TestItem[]
+) {
+	if (!root.uri) return; // Should never happen
+
+	const workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
+	if (!workspaceFolder) return;
+
+	// Get CTest path and load tests
+	const cwd = path.dirname(root.uri.fsPath);
+	const ctestPath = extractCtestPath(root.uri.fsPath);
+	const [buildConfig] = await getConfigStrings(workspaceFolder, [
+		'buildConfig',
+	]);
+	const cmakeTests = await loadCmakeTests(ctestPath, cwd, buildConfig, '');
+
+	// Debug each test in the group
+	for (const item of testsToRun) {
+		if (token.isCancellationRequested) return;
+		await debugTest(workspaceFolder, cmakeTests, ctestPath, item.id);
+	}
+}
+
+/**
+ * Debug a single test
+ *
+ * @param workspaceFolder Workspace folder containing the test
+ * @param cmakeTests List of available CMake tests
+ * @param ctestPath Path to CTest executable
+ * @param id Test ID to debug
+ */
+async function debugTest(
+	workspaceFolder: vscode.WorkspaceFolder,
+	cmakeTests: CmakeTestInfo[],
+	ctestPath: string,
+	id: string
+) {
+	const test = cmakeTests.find((test) => test.name === id);
+	if (!test) {
+		// Not found.
+		return;
+	}
+
+	// Debug test
+	const disposables: vscode.Disposable[] = [];
+	try {
+		// Get & substitute config settings
+		const extraCtestEnvVars = await getConfigObject(
+			workspaceFolder,
+			'extraCtestEnvVars'
+		);
+		const [debugConfig] = await getConfigStrings(workspaceFolder, [
+			'debugConfig',
+		]);
+		const defaultConfig = getDefaultDebugConfiguration();
+
+		// Get test-specific debug config
+		const { env, ...debuggedTestConfig } =
+			getCmakeTestDebugConfiguration(test);
+
+		// Utilities to merge configs and environment variables
+		const mergeEnvironments = (environment: DebugEnvironment) =>
+			mergeVariablesIntoDebugEnv(
+				mergeVariablesIntoDebugEnv(environment, extraCtestEnvVars),
+				env
+			);
+		const mergeConfigs = ({
+			environment = [],
+			...config
+		}: vscode.DebugConfiguration) => ({
+			...config,
+			...debuggedTestConfig,
+			environment: mergeEnvironments(environment),
+		});
+		const mergeLldbConfigs = (config: vscode.DebugConfiguration) => ({
+			...config,
+			...debuggedTestConfig,
+			env: { ...config.env, ...extraCtestEnvVars, ...env },
+		});
+
+		// Register a DebugConfigurationProvider to combine global and
+		// test-specific debug configurations before the debugging session starts
+		disposables.push(
+			vscode.debug.registerDebugConfigurationProvider('*', {
+				resolveDebugConfigurationWithSubstitutedVariables: (
+					folder: vscode.WorkspaceFolder | undefined,
+					config: vscode.DebugConfiguration,
+					token?: vscode.CancellationToken
+				): vscode.ProviderResult<vscode.DebugConfiguration> =>
+					config.type === 'lldb'
+						? mergeLldbConfigs(config)
+						: mergeConfigs(config),
+			})
+		);
+
+		// Start the debugging session. The actual debug config will combine the
+		// global and test-specific values
+		await vscode.debug.startDebugging(
+			workspaceFolder,
+			debugConfig || defaultConfig
+		);
+	} catch (e) {
+		await vscode.window.showErrorMessage(
+			`Error debugging CMake test ${id}: ${e}`
+		);
+	} finally {
+		disposables.forEach((disposable) => disposable.dispose());
+	}
+}
+
+/**
+ * Get default debug config when none is specified in the settings
+ */
+function getDefaultDebugConfiguration(): vscode.DebugConfiguration {
+	return {
+		name: 'CTest',
+		type: 'cppdbg',
+		request: 'launch',
+		windows: {
+			type: 'cppvsdbg',
+		},
+		linux: {
+			type: 'cppdbg',
+			MIMode: 'gdb',
+		},
+		osx: {
+			type: 'cppdbg',
+			MIMode: 'lldb',
+		},
+	};
+}
+
+/**
  * Get workspace configuration object
  *
  * @param workspaceFolder Workspace folder
@@ -177,7 +637,7 @@ function getWorkspaceConfiguration(workspaceFolder: vscode.WorkspaceFolder) {
  * Get & substitute config settings
  *
  * @param workspaceFolder Workspace folder
- * @param name Config names
+ * @param names Config names
  *
  * @return Config values
  */
@@ -206,26 +666,26 @@ function configGetStr(
 	return substituteString(configStr, varMap);
 }
 
-// /**
-//  * Get & substitute config object
-//  *
-//  * @param workspaceFolder Workspace folder
-//  * @param name Config object name
-//  *
-//  * @return Config object values
-//  */
-// async function getConfigObject(
-// 	workspaceFolder: vscode.WorkspaceFolder,
-// 	name: string
-// ) {
-// 	const config = getWorkspaceConfiguration(workspaceFolder);
-// 	const varMap = await getVariableSubstitutionMap(workspaceFolder);
-// 	const obj = config.get<{ [key: string]: string }>(name) || {};
-// 	for (let key in obj) {
-// 		obj[key] = substituteString(obj[key], varMap);
-// 	}
-// 	return obj;
-// }
+/**
+ * Get & substitute config object
+ *
+ * @param workspaceFolder Workspace folder
+ * @param name Config object name
+ *
+ * @return Config object values
+ */
+async function getConfigObject(
+	workspaceFolder: vscode.WorkspaceFolder,
+	name: string
+) {
+	const config = getWorkspaceConfiguration(workspaceFolder);
+	const varMap = await getVariableSubstitutionMap(workspaceFolder);
+	const obj = config.get<{ [key: string]: string }>(name) || {};
+	for (let key in obj) {
+		obj[key] = substituteString(obj[key], varMap);
+	}
+	return obj;
+}
 
 /**
  * Get variable to value substitution map for config strings
@@ -275,6 +735,28 @@ async function getVariableSubstitutionMap(
 }
 
 /**
+ * Get number of jobs to run in parallel
+ *
+ * @param workspaceFolder Workspace folder
+ */
+function getParallelJobs(workspaceFolder: vscode.WorkspaceFolder) {
+	const config = getWorkspaceConfiguration(workspaceFolder);
+	let parallelJobs = config.get<number>('parallelJobs');
+	if (!parallelJobs) {
+		const cmakeConfig = vscode.workspace.getConfiguration(
+			'cmake',
+			workspaceFolder.uri
+		);
+		parallelJobs =
+			cmakeConfig.get<number>('ctest.parallelJobs') ||
+			cmakeConfig.get<number>('parallelJobs') ||
+			os.cpus().length;
+	}
+	if (parallelJobs < 1) parallelJobs = 1;
+	return parallelJobs;
+}
+
+/**
  * Get test file/line number info from CMake test info
  *
  * @param test CMake test info
@@ -301,8 +783,8 @@ function getTestFileInfo(
  * @param env Map of environment variables
  * @param varname Variable name to get value for
  */
-function getFileFromEnvironment(env: NodeJS.ProcessEnv, fileVar: string) {
-	return env[fileVar];
+function getFileFromEnvironment(env: NodeJS.ProcessEnv, varname: string) {
+	return env[varname];
 }
 
 /**
@@ -332,4 +814,78 @@ function substituteString(str: string, varMap: Map<string, string>) {
 		}
 	});
 	return str;
+}
+
+/** Debug environment array */
+type DebugEnvironment = { name: string; value: string | undefined }[];
+
+/**
+ * Get key of variable in process environment
+ *
+ * Some platforms such as Win32 have case-insensitive environment variables
+ *
+ * @param varname Variable name
+ * @param env Process environment
+ */
+function getVariableKey(varname: string, env: NodeJS.ProcessEnv) {
+	return process.platform === 'win32'
+		? Object.keys(env).find(
+				(key) => key.toUpperCase() == varname.toUpperCase()
+			) || varname
+		: varname;
+}
+/**
+ * Get index of variable in debug environment
+ *
+ * Some platforms such as Win32 have case-insensitive environment variables
+ *
+ * @param varname Variable name
+ * @param environment Debug environment
+ */
+function getVariableIndex(varname: string, environment: DebugEnvironment) {
+	return process.platform === 'win32'
+		? environment.findIndex(
+				({ name }) => name.toUpperCase() == varname.toUpperCase()
+			)
+		: environment.findIndex(({ name }) => name == varname);
+}
+
+/**
+ * Merge variables into process environment
+ *
+ * @param variables Variables to merge
+ *
+ * @return Environment with variables merged
+ */
+function mergeVariablesIntoProcessEnv(variables: { [name: string]: string }) {
+	const result = { ...process.env };
+	for (let name in variables) {
+		delete result[getVariableKey(name, process.env)];
+		result[name] = variables[name];
+	}
+	return result;
+}
+
+/**
+ * Merge variables into debug environment
+ *
+ * @param environment Target environment
+ * @param variables Variables to merge
+ *
+ * @return Environment with variables merged
+ */
+function mergeVariablesIntoDebugEnv(
+	environment: DebugEnvironment,
+	variables: { [name: string]: string }
+) {
+	const result = [...environment];
+	for (let name in variables) {
+		const variableIndex = getVariableIndex(name, environment);
+		if (variableIndex == -1) {
+			result.push({ name, value: variables[name] });
+		} else {
+			result[variableIndex] = { name, value: variables[name] };
+		}
+	}
+	return result;
 }
