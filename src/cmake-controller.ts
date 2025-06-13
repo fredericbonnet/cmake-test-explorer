@@ -247,8 +247,14 @@ async function runTestsForRoot(
 		const ctestPath = extractCtestPath(root.uri.fsPath);
 		const options = await getRunOptions(ctestPath, workspaceFolder, cwd);
 
+		// Get error pattern from settings
+		const [errorPattern] = await getConfigStrings(workspaceFolder, [
+			'errorPattern',
+		]);
+		const errorPatternRe = new RegExp(errorPattern);
+
 		// Convert tests to flat array of names
-		let testIds: number[] = [];
+		let testIndexes: number[] = [];
 		if (testsToRun) {
 			const allTests = await loadCmakeTests(
 				ctestPath,
@@ -256,13 +262,13 @@ async function runTestsForRoot(
 				options.buildConfig,
 				''
 			);
-			testIds = testsToRun.map(
+			testIndexes = testsToRun.map(
 				(test) => allTests.findIndex((t) => t.name === test.id) + 1
 			);
 		}
 
 		// Schedule and run tests
-		const testProcess = scheduleCmakeTestProcess(testIds, options);
+		const testProcess = scheduleCmakeTestProcess(testIndexes, options);
 
 		// Handle cancellation
 		token.onCancellationRequested(() => {
@@ -271,6 +277,8 @@ async function runTestsForRoot(
 
 		// Run tests and collect output
 		const outputs = new Map<number, string[]>();
+		const decorations = new Map<number, vscode.TestMessage[]>();
+
 		await executeCmakeTestProcess(testProcess, (event: CmakeTestEvent) => {
 			switch (event.type) {
 				case 'start': {
@@ -288,17 +296,46 @@ async function runTestsForRoot(
 						outputs.set(event.index, []);
 					}
 					outputs.get(event.index)?.push(event.line);
+
+					// Parse error patterns
+					if (event.text) {
+						const matches =
+							event.text.match(errorPatternRe)?.groups;
+						if (matches) {
+							const { file, line, severity, message } = matches;
+
+							if (!decorations.has(event.index)) {
+								decorations.set(event.index, []);
+							}
+
+							const decoration = new vscode.TestMessage(
+								severity ? `${severity}: ${message}` : message
+							);
+							decoration.location = new vscode.Location(
+								vscode.Uri.file(file),
+								new vscode.Position(
+									Number.parseInt(line) - 1,
+									0
+								)
+							);
+							decorations.get(event.index)?.push(decoration);
+						}
+					}
 					break;
 				}
 
 				case 'end': {
 					// Find test item by name
 					const testItem = findTestItem(root, event.name);
-					if (!testItem) break; // Get accumulated output
+					if (!testItem) break;
+					// Get accumulated output
 					const message = outputs.get(event.index)?.join('\r\n');
 					const testMessage = message
 						? new vscode.TestMessage(message)
-						: undefined; // Update test state
+						: undefined;
+					const testDecorations = decorations.get(event.index) || [];
+
+					// Update test state
 					switch (event.state) {
 						case 'passed':
 							run.passed(testItem);
@@ -307,12 +344,20 @@ async function runTestsForRoot(
 							}
 							break;
 						case 'failed':
-							run.failed(
-								testItem,
-								testMessage
-									? [testMessage]
-									: [new vscode.TestMessage('Test failed')]
-							);
+							if (testDecorations.length > 0) {
+								run.failed(testItem, testDecorations);
+							} else {
+								run.failed(
+									testItem,
+									testMessage
+										? [testMessage]
+										: [
+												new vscode.TestMessage(
+													'Test failed'
+												),
+											]
+								);
+							}
 							if (message) {
 								run.appendOutput(message);
 							}
