@@ -253,19 +253,23 @@ async function runTestsForRoot(
 		]);
 		const errorPatternRe = new RegExp(errorPattern);
 
-		// Convert tests to flat array of names
-		let testIndexes: number[] = [];
-		if (testsToRun) {
-			const allTests = await loadCmakeTests(
-				ctestPath,
-				cwd,
-				options.buildConfig,
-				''
-			);
-			testIndexes = testsToRun.map(
-				(test) => allTests.findIndex((t) => t.name === test.id) + 1
-			);
-		}
+		// Map test items to their indexes
+		const allTests = await loadCmakeTests(
+			ctestPath,
+			cwd,
+			options.buildConfig,
+			''
+		);
+		const indexToItem = new Map<number, vscode.TestItem>();
+		const testIndexes = (testsToRun || collectTestItems(root)).map(
+			(test) => {
+				const index = allTests.findIndex((t) => t.name === test.id) + 1;
+				if (index > 0) {
+					indexToItem.set(index, test);
+				}
+				return index;
+			}
+		);
 
 		// Schedule and run tests
 		const testProcess = scheduleCmakeTestProcess(testIndexes, options);
@@ -276,26 +280,19 @@ async function runTestsForRoot(
 		});
 
 		// Run tests and collect output
-		const outputs = new Map<number, string[]>();
 		const decorations = new Map<number, vscode.TestMessage[]>();
 
 		await executeCmakeTestProcess(testProcess, (event: CmakeTestEvent) => {
+			const testItem = indexToItem.get(event.index);
+			if (!testItem) return;
 			switch (event.type) {
 				case 'start': {
-					// Find test item by name
-					const testItem = findTestItem(root, event.name);
-					if (testItem) {
-						run.started(testItem);
-					}
+					run.started(testItem);
 					break;
 				}
 
 				case 'output': {
-					// Collect output lines
-					if (!outputs.has(event.index)) {
-						outputs.set(event.index, []);
-					}
-					outputs.get(event.index)?.push(event.line);
+					run.appendOutput(event.line + '\r\n', undefined, testItem);
 
 					// Parse error patterns
 					if (event.text) {
@@ -325,23 +322,12 @@ async function runTestsForRoot(
 				}
 
 				case 'end': {
-					// Find test item by name
-					const testItem = findTestItem(root, event.name);
-					if (!testItem) break;
-					// Get accumulated output
-					const message = outputs.get(event.index)?.join('\r\n');
-					const testMessage = message
-						? new vscode.TestMessage(message)
-						: undefined;
 					const testDecorations = decorations.get(event.index) || [];
 
 					// Update test state
 					switch (event.state) {
 						case 'passed':
 							run.passed(testItem);
-							if (message) {
-								run.appendOutput(message);
-							}
 							break;
 						case 'failed':
 							if (testDecorations.length > 0) {
@@ -349,24 +335,12 @@ async function runTestsForRoot(
 							} else {
 								run.failed(
 									testItem,
-									testMessage
-										? [testMessage]
-										: [
-												new vscode.TestMessage(
-													'Test failed'
-												),
-											]
+									new vscode.TestMessage('Test failed')
 								);
-							}
-							if (message) {
-								run.appendOutput(message);
 							}
 							break;
 						case 'skipped':
 							run.skipped(testItem);
-							if (message) {
-								run.appendOutput(message);
-							}
 							break;
 					}
 					break;
@@ -438,27 +412,6 @@ function collectTestItems(item: vscode.TestItem): vscode.TestItem[] {
 		}
 	});
 	return results;
-}
-
-/**
- * Find test item by name
- *
- * @param root Root test item
- * @param name Test name
- *
- * @return Test item or undefined
- */
-function findTestItem(
-	root: vscode.TestItem,
-	name: string
-): vscode.TestItem | undefined {
-	if (root.id === name) return root;
-	let result: vscode.TestItem | undefined;
-	root.children.forEach((child) => {
-		const found = findTestItem(child, name);
-		if (found) result = found;
-	});
-	return result;
 }
 
 /**
