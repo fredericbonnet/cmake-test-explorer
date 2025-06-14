@@ -747,18 +747,27 @@ async function getVariableSubstitutionMap(
 		['${workspaceFolder}', workspaceFolder.uri.fsPath],
 	]);
 
-	// Variables from the CMake Tools extension
-	for (const varname of ['buildType', 'buildDirectory']) {
-		const command = `cmake.${varname}`;
-		if ((await vscode.commands.getCommands()).includes(command)) {
-			const value = (await vscode.commands.executeCommand(
-				command,
-				workspaceFolder
-			)) as string;
-			substitutionMap.set(`\${${varname}}`, value);
-		} else {
-			// Missing variables default to empty
-			substitutionMap.set(`\${${varname}}`, '');
+	// Variables from the CMake Tools extension if enabled
+	const config = getWorkspaceConfiguration(workspaceFolder);
+	const cmakeIntegration = config.get('cmakeIntegration');
+	if (cmakeIntegration === 'true' || cmakeIntegration === true) {
+		const cmakeExtension = vscode.extensions.getExtension(
+			'ms-vscode.cmake-tools'
+		);
+		if (cmakeExtension) {
+			if (!cmakeExtension.isActive) await cmakeExtension.activate();
+			for (const varname of ['buildType', 'buildDirectory']) {
+				const command = `cmake.${varname}`;
+				if ((await vscode.commands.getCommands()).includes(command)) {
+					const value = (await vscode.commands.executeCommand(
+						command,
+						workspaceFolder
+					)) as string;
+					substitutionMap.set(`\${${varname}}`, value);
+				} else {
+					substitutionMap.set(`\${${varname}}`, '');
+				}
+			}
 		}
 	}
 
