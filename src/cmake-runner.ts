@@ -42,6 +42,9 @@ const CTEST_DISABLED_RE =
 /** Regexp for test failed line */
 const CTEST_FAILED_RE = /^\s*\d+\/\d+ Test\s+#(\d+): (.+) \.\.\.+/;
 
+/** Regexpr for test duration */
+const CTEST_DURATION_RE = /\s+(\d+(?:\.\d+)) sec$/;
+
 /** Generic test event */
 export type CmakeTestEvent =
 	| CmakeTestStartEvent
@@ -69,6 +72,7 @@ export interface CmakeTestEndEvent {
 	index: number;
 	name: string;
 	state: 'passed' | 'failed' | 'skipped';
+	duration?: number;
 }
 
 /** Error thrown when CMake cache file is not found in build dir */
@@ -232,6 +236,10 @@ export function executeCmakeTestProcess(
 				.pipe(split2())
 				.on('data', (line: string) => {
 					// Parse each output line and raise matching events
+					const durationMatches = line.match(CTEST_DURATION_RE);
+					const duration = durationMatches
+						? Number.parseFloat(durationMatches[1]) * 1000
+						: undefined;
 					let matches;
 					if ((matches = line.match(CTEST_START_RE))) {
 						// Test start
@@ -249,7 +257,13 @@ export function executeCmakeTestProcess(
 						const index = Number.parseInt(matches[1]);
 						const name = matches[2];
 						onEvent({ type: 'output', index, line });
-						onEvent({ type: 'end', index, name, state: 'passed' });
+						onEvent({
+							type: 'end',
+							index,
+							name,
+							state: 'passed',
+							duration,
+						});
 					} else if (
 						(matches = line.match(CTEST_SKIPPED_RE)) ||
 						(matches = line.match(CTEST_DISABLED_RE))
@@ -264,7 +278,13 @@ export function executeCmakeTestProcess(
 						const index = Number.parseInt(matches[1]);
 						const name = matches[2];
 						onEvent({ type: 'output', index, line });
-						onEvent({ type: 'end', index, name, state: 'failed' });
+						onEvent({
+							type: 'end',
+							index,
+							name,
+							duration,
+							state: 'failed',
+						});
 					}
 				})
 				.on('end', () => {

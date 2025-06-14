@@ -327,11 +327,15 @@ async function runTestsForRoot(
 					// Update test state
 					switch (event.state) {
 						case 'passed':
-							run.passed(testItem);
+							run.passed(testItem, event.duration);
 							break;
 						case 'failed':
 							if (testDecorations.length > 0) {
-								run.failed(testItem, testDecorations);
+								run.failed(
+									testItem,
+									testDecorations,
+									event.duration
+								);
 							} else {
 								run.failed(
 									testItem,
