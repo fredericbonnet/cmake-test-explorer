@@ -61,7 +61,7 @@
 		"vscode": "^1.88.0"
 	},
 	"activationEvents": [
-		"*"
+		"workspaceContains:**/CMakeLists.txt"
 	],
 	"contributes": {
 		"configuration": {
