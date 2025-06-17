@@ -152,7 +152,8 @@ async function loadTestsFromCacheFile(
 
 	cmakeTests.forEach((test) => {
 		const testId = test.name;
-		let testUri;
+		let testUri: vscode.Uri | undefined;
+		let testRange: vscode.Range | undefined;
 		if (testFileVar) {
 			const testFileInfo = getTestFileInfo(
 				test,
@@ -160,12 +161,20 @@ async function loadTestsFromCacheFile(
 				testLineVar
 			);
 			if (testFileInfo.file) {
-				testUri = uri.with({
-					path: testFileInfo.file,
-					fragment: testFileInfo.line
-						? 'L' + testFileInfo.line
-						: undefined,
-				});
+				// Ensure paths are absolute
+				testUri = vscode.Uri.file(
+					path.resolve(workspaceFolder.uri.fsPath, testFileInfo.file)
+				);
+				if (!isNaN(testFileInfo.line)) {
+					// Convert to 0-based line number
+					const zeroBasedLine = testFileInfo.line - 1;
+					testRange = new vscode.Range(
+						zeroBasedLine,
+						0,
+						zeroBasedLine,
+						0
+					);
+				}
 			}
 		}
 		let parentItem = rootItem;
@@ -185,6 +194,7 @@ async function loadTestsFromCacheFile(
 			}
 		}
 		const testItem = controller.createTestItem(testId, testName, testUri);
+		testItem.range = testRange;
 		parentItem.children.add(testItem);
 	});
 }
@@ -805,9 +815,7 @@ function getFileFromEnvironment(env: NodeJS.ProcessEnv, varname: string) {
  * @param varname Variable name to get value for
  */
 function getLineFromEnvironment(env: NodeJS.ProcessEnv, varname: string) {
-	const value = env[varname];
-	if (value) return Number.parseInt(value);
-	return;
+	return Number(env[varname]);
 }
 
 /**
