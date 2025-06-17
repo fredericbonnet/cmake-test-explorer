@@ -18,7 +18,7 @@
 		"Elizabeth Lin (https://github.com/elizabethtl)"
 	],
 	"publisher": "fredericbonnet",
-	"version": "0.17.4",
+	"version": "1.0.0",
 	"license": "BSD-3-Clause",
 	"homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
 	"repository": {
@@ -45,17 +45,19 @@
 		"publish": "vsce publish"
 	},
 	"dependencies": {
+		"markdown-it": "^14.1.0",
 		"split-cmd": "^1.1.0",
 		"split2": "^4.2.0",
 		"tslib": "^1.14.1"
 	},
 	"devDependencies": {
+		"@types/markdown-it": "^14.1.2",
 		"@types/split2": "^4.2.0",
 		"@types/vscode": "^1.88.0",
+		"@vscode/vsce": "^3.5.0",
 		"prettier": "^3.5.3",
 		"rimraf": "^3.0.2",
-		"typescript": "^5.8.2",
-		"vsce": "^2.3.0"
+		"typescript": "^5.8.2"
 	},
 	"engines": {
 		"vscode": "^1.88.0"

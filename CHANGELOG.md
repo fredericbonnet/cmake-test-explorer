@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Complete rewrite of the UI to use the native Testing extension API instead of
+  the old Test Explorer adapter
+
+### Added
+
+- Auto-detection of CMake build directories
+- Test durations from CTest logs
+
+### Removed
+
+- `cmakeExplorer.buildDir` configuration is no longer needed thanks to
+  auto-detection of build directories
+
 ## [0.17.4] - 2024-05-04
 
 ### Fixed

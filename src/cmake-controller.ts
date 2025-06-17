@@ -712,6 +712,8 @@ async function getVariableSubstitutionMap(
 	// Standard variables
 	const substitutionMap = new Map<string, string>([
 		['${workspaceFolder}', workspaceFolder.uri.fsPath],
+		['${buildType}', 'Debug'],
+		['${buildDirectory}', ''],
 	]);
 
 	// Variables from the CMake Tools extension if enabled

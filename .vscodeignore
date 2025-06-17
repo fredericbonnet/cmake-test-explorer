@@ -1,6 +1,10 @@
 src/**
+examples/**
 **/*.map
 package-lock.json
 tsconfig.json
 .vscode/**
+.editorconfig
 .gitignore
+.gitmodules
+.prettierrc
