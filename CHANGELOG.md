@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-06-20
+
 ### Changed
 
 - Complete rewrite of the UI to use the native Testing extension API instead of
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Auto-detection of CMake build directories
 - Test durations from CTest logs
+- Welcome/what's new screen
 
 ### Removed
 
@@ -265,7 +268,8 @@ Thanks to @andrewbridge for these contributions!
 
 <!-- Versions -->
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.4...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.4...v1.0.0
 [0.17.4]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.3...v0.17.4
 [0.17.3]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.2...v0.17.3
 [0.17.2]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.1...v0.17.2
