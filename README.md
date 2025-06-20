@@ -8,7 +8,7 @@ Run your [CMake] tests using Visual Studio Code's [native Testing UI][vscode-tes
 - Reasonable defaults for zero-config
 - Integrates with CMake Tools
 - Runs tests in parallel
-- Supports custom test properties for advanced featutes like hierarchical suites
+- Supports custom test properties for advanced features like hierarchical suites
   and test locations
 
 ## Configuration
