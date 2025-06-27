@@ -63,7 +63,7 @@
 		"vscode": "^1.88.0"
 	},
 	"activationEvents": [
-		"workspaceContains:**/CMakeLists.txt"
+		"*"
 	],
 	"contributes": {
 		"configuration": {
@@ -76,7 +76,7 @@
 					"scope": "resource"
 				},
 				"cmakeExplorer.buildDir": {
-					"deprecationMessage": "No longer used, autodetected from CMakeCache.txt",
+					"deprecationMessage": "No longer used, autodetected from CTestTestfile.cmake",
 					"description": "The CMake build directory (relative to the workspace folder)",
 					"type": "string",
 					"default": "${buildDirectory}",

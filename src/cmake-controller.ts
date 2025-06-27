@@ -7,14 +7,15 @@ import * as path from 'path';
 import * as os from 'os';
 import { CmakeTestInfo } from './interfaces/cmake-test-info';
 import {
-	extractCtestPath,
+	getCtestPath,
+	CacheNotFoundError,
 	loadCmakeTests,
 	scheduleCmakeTestProcess,
 	executeCmakeTestProcess,
 	cancelCmakeTestProcess,
 	getCmakeTestDebugConfiguration,
 	getCmakeTestEnvironmentVariables,
-	CMAKE_CACHE_FILE,
+	CTEST_TEST_FILE,
 	CmakeTestRunOptions,
 	CmakeTestEvent,
 } from './cmake-runner';
@@ -64,16 +65,16 @@ export function createCmakeController() {
 function loadTestsFromAllWorkspaceFolders(controller: vscode.TestController) {
 	controller.items.replace([]);
 	return Promise.all(
-		getWorkspaceCacheFilePatterns().map(({ workspaceFolder, pattern }) =>
-			loadTestsFromCacheFilePattern(controller, workspaceFolder, pattern)
+		getWorkspaceTestFilePatterns().map(({ workspaceFolder, pattern }) =>
+			loadTestsFromTestFilePattern(controller, workspaceFolder, pattern)
 		)
 	);
 }
 
 /**
- * Get workspace cache file patterns
+ * Get workspace test file patterns
  */
-function getWorkspaceCacheFilePatterns() {
+function getWorkspaceTestFilePatterns() {
 	if (!vscode.workspace.workspaceFolders) {
 		return [];
 	}
@@ -82,39 +83,44 @@ function getWorkspaceCacheFilePatterns() {
 		workspaceFolder,
 		pattern: new vscode.RelativePattern(
 			workspaceFolder,
-			'**/' + CMAKE_CACHE_FILE
+			'**/' + CTEST_TEST_FILE
 		),
 	}));
 }
 
 /**
- * Load tests from cache file pattern
+ * Load tests from test file pattern
  *
  * @param controller Test controller
  * @param workspaceFolder Workspace folder
- * @param pattern Cache file pattern
+ * @param pattern Test file pattern
  */
-async function loadTestsFromCacheFilePattern(
+async function loadTestsFromTestFilePattern(
 	controller: vscode.TestController,
 	workspaceFolder: vscode.WorkspaceFolder,
 	pattern: vscode.RelativePattern
 ) {
 	for (const file of await vscode.workspace.findFiles(pattern)) {
-		loadTestsFromCacheFile(controller, workspaceFolder, file);
+		const buildDir = path.dirname(file.fsPath);
+		loadTestsFromBuildDir(
+			controller,
+			workspaceFolder,
+			vscode.Uri.file(buildDir)
+		);
 	}
 }
 
 /**
- * Load tests from cache file
+ * Load tests from build dir
  *
  * @param controller Test controller
  * @param workspaceFolder Workspace folder
- * @param uri Cache file URI
+ * @param buildDirUri Build dir URI
  */
-async function loadTestsFromCacheFile(
+async function loadTestsFromBuildDir(
 	controller: vscode.TestController,
 	workspaceFolder: vscode.WorkspaceFolder,
-	uri: vscode.Uri
+	buildDirUri: vscode.Uri
 ) {
 	// Get & substitute config settings
 	const [
@@ -132,22 +138,30 @@ async function loadTestsFromCacheFile(
 	]);
 
 	// Resolve CTest path
-	const cacheFilePath = uri.fsPath;
-	const dir = path.dirname(cacheFilePath);
-	const ctestPath = extractCtestPath(cacheFilePath);
+	const buildDir = buildDirUri.fsPath;
+	let ctestPath: string;
+	try {
+		ctestPath = getCtestPath(buildDir);
+	} catch (e) {
+		if (e instanceof CacheNotFoundError) {
+			// Cache file doesn't exist, ignore (false positive)
+			return;
+		}
+		throw e;
+	}
 
 	// Load CTest test list
 	const cmakeTests = await loadCmakeTests(
 		ctestPath,
-		dir,
+		buildDir,
 		buildConfig,
 		extraCtestLoadArgs
 	);
 
 	// Create root test item for build dir
-	const rootId = uri.toString();
-	const label = vscode.workspace.asRelativePath(dir, true);
-	const rootItem = controller.createTestItem(rootId, label, uri);
+	const rootId = buildDirUri.toString();
+	const label = vscode.workspace.asRelativePath(buildDir, true);
+	const rootItem = controller.createTestItem(rootId, label, buildDirUri);
 	controller.items.add(rootItem);
 
 	cmakeTests.forEach((test) => {
@@ -253,8 +267,8 @@ async function runTestsForRoot(
 		const workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
 		if (!workspaceFolder) return;
 		// Get options including CTest path, config, env vars, etc.
-		const cwd = path.dirname(root.uri.fsPath);
-		const ctestPath = extractCtestPath(root.uri.fsPath);
+		const cwd = root.uri.fsPath;
+		const ctestPath = getCtestPath(cwd);
 		const options = await getRunOptions(ctestPath, workspaceFolder, cwd);
 
 		// Get error pattern from settings
@@ -510,8 +524,8 @@ async function debugTestsForRoot(
 	if (!workspaceFolder) return;
 
 	// Get CTest path and load tests
-	const cwd = path.dirname(root.uri.fsPath);
-	const ctestPath = extractCtestPath(root.uri.fsPath);
+	const cwd = root.uri.fsPath;
+	const ctestPath = getCtestPath(cwd);
 	const [buildConfig] = await getConfigStrings(workspaceFolder, [
 		'buildConfig',
 	]);

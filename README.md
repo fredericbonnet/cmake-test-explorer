@@ -249,9 +249,10 @@ list.
 
 ### The Testing UI shows no error but the test list is empty
 
-The extension autodetects CMake build directories by finding all
-`CMakeCache.txt` in the workspace. Ensure you have at least one and run `ctest
--C Debug` from there
+The extension autodetects CMake build directories with tests enabled by finding
+all directories in the workspace having both `CMakeCache.txt` and
+`CTestTestfile.cmake`. Ensure you have at least one and run `ctest -C Debug`
+from there.
 
 <!-- Links -->
 
