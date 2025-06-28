@@ -7,23 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bring back `cmakeExplorer.buildDir` setting. This fixes issue #78.
+- Add `cmakeExplorer.autodetectBuildDir` setting. This fixes issue #80 along
+  with the above.
+
+### Fixed
+
+- Remove false positives in build dir detection. This fixes issue #79.
+
 ## [1.0.0] - 2025-06-20
 
 ### Changed
 
 - Complete rewrite of the UI to use the native Testing extension API instead of
-  the old Test Explorer adapter
+  the old Test Explorer adapter.
 
 ### Added
 
-- Auto-detection of CMake build directories
-- Test durations from CTest logs
-- Welcome/what's new screen
+- Auto-detection of CMake build directories.
+- Test durations from CTest logs.
+- Welcome/what's new screen.
 
 ### Removed
 
 - `cmakeExplorer.buildDir` configuration is no longer needed thanks to
-  auto-detection of build directories
+  auto-detection of build directories.
 
 ## [0.17.4] - 2024-05-04
 

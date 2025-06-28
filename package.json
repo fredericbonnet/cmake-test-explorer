@@ -75,8 +75,13 @@
 					"type": "string",
 					"scope": "resource"
 				},
+				"cmakeExplorer.autodetectBuildDirs": {
+					"description": "Autodetect build directories by searching for `CTestTestfile.cmake` files in workspace",
+					"type": "boolean",
+					"default": "true",
+					"scope": "resource"
+				},
 				"cmakeExplorer.buildDir": {
-					"deprecationMessage": "No longer used, autodetected from CTestTestfile.cmake",
 					"description": "The CMake build directory (relative to the workspace folder)",
 					"type": "string",
 					"default": "${buildDirectory}",

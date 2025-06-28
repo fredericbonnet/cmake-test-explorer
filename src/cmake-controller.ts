@@ -64,28 +64,41 @@ export function createCmakeController() {
  */
 function loadTestsFromAllWorkspaceFolders(controller: vscode.TestController) {
 	controller.items.replace([]);
-	return Promise.all(
-		getWorkspaceTestFilePatterns().map(({ workspaceFolder, pattern }) =>
-			loadTestsFromTestFilePattern(controller, workspaceFolder, pattern)
-		)
-	);
-}
-
-/**
- * Get workspace test file patterns
- */
-function getWorkspaceTestFilePatterns() {
 	if (!vscode.workspace.workspaceFolders) {
 		return [];
 	}
 
-	return vscode.workspace.workspaceFolders.map((workspaceFolder) => ({
+	return Promise.all(
+		vscode.workspace.workspaceFolders.map((workspaceFolder) =>
+			loadTestsFromWorkspace(controller, workspaceFolder)
+		)
+	);
+}
+
+async function loadTestsFromWorkspace(
+	controller: vscode.TestController,
+	workspaceFolder: vscode.WorkspaceFolder
+) {
+	const [autodetectBuildDirs, buildDir] = await getConfigStrings(
 		workspaceFolder,
-		pattern: new vscode.RelativePattern(
+		['autodetectBuildDirs', 'buildDir']
+	);
+	await loadTestsFromBuildDir(
+		controller,
+		workspaceFolder,
+		vscode.Uri.file(path.resolve(workspaceFolder.uri.fsPath, buildDir))
+	);
+	if (autodetectBuildDirs === 'true') {
+		const pattern = new vscode.RelativePattern(
 			workspaceFolder,
 			'**/' + CTEST_TEST_FILE
-		),
-	}));
+		);
+		await loadTestsFromTestFilePattern(
+			controller,
+			workspaceFolder,
+			pattern
+		);
+	}
 }
 
 /**
