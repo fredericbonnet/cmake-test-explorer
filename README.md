@@ -2,6 +2,21 @@
 
 Run your [CMake] tests using Visual Studio Code's [native Testing UI][vscode-testing].
 
+## What's new in version 1.1.0
+
+### Added
+
+- Bring back `cmakeExplorer.buildDir` setting. This fixes issue
+  [#78](https://github.com/fredericbonnet/cmake-test-explorer/issues/78).
+- Add `cmakeExplorer.autodetectBuildDir` setting. This fixes issue
+  [#80](https://github.com/fredericbonnet/cmake-test-explorer/issues/80) along
+  with the above.
+
+### Fixed
+
+- Remove false positives in build dir detection. This fixes issue
+  [#79](https://github.com/fredericbonnet/cmake-test-explorer/issues/79).
+
 ## Features
 
 - Autodects CMake build directories in workspace
