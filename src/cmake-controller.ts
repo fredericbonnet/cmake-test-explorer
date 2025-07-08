@@ -20,6 +20,9 @@ import {
 	CmakeTestEvent,
 } from './cmake-runner';
 
+// Store workspace folder information for out-of-source builds
+const workspaceFolderMap = new WeakMap<vscode.TestItem, vscode.WorkspaceFolder>();
+
 /**
  * Create CMake test controller
  */
@@ -175,6 +178,8 @@ async function loadTestsFromBuildDir(
 	const rootId = buildDirUri.toString();
 	const label = vscode.workspace.asRelativePath(buildDir, true);
 	const rootItem = controller.createTestItem(rootId, label, buildDirUri);
+	// Store workspace folder information for out-of-source builds
+	workspaceFolderMap.set(rootItem, workspaceFolder);
 	controller.items.add(rootItem);
 
 	cmakeTests.forEach((test) => {
@@ -277,8 +282,12 @@ async function runTestsForRoot(
 	if (!root.uri) return; // Should never happen
 
 	try {
-		const workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
-		if (!workspaceFolder) return;
+		let workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
+		if (!workspaceFolder) {
+			// Handle out-of-source builds by using stored workspace folder information
+			workspaceFolder = workspaceFolderMap.get(root);
+			if (!workspaceFolder) return;
+		}
 		// Get options including CTest path, config, env vars, etc.
 		const cwd = root.uri.fsPath;
 		const ctestPath = getCtestPath(cwd);
@@ -533,8 +542,12 @@ async function debugTestsForRoot(
 ) {
 	if (!root.uri) return; // Should never happen
 
-	const workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
-	if (!workspaceFolder) return;
+	let workspaceFolder = vscode.workspace.getWorkspaceFolder(root.uri);
+	if (!workspaceFolder) {
+		// Handle out-of-source builds by using stored workspace folder information
+		workspaceFolder = workspaceFolderMap.get(root);
+		if (!workspaceFolder) return;
+	}
 
 	// Get CTest path and load tests
 	const cwd = root.uri.fsPath;
