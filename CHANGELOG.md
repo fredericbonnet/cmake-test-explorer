@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix test run/debug for out-of-source builds (thanks @scottabauer). This fixes
+  issue #78 (regression).
+
 ## [1.1.0] - 2025-06-28
 
 ### Added
