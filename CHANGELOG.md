@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-07-22
+
 ### Fixed
 
-- Fix test run/debug for out-of-source builds (thanks @scottabauer). This fixes
+- Fix test run/debug for out-of-source builds (thanks @scottabauer!). This fixes
   issue #78 (regression).
 
 ## [1.1.0] - 2025-06-28
@@ -285,7 +287,8 @@ Thanks to @andrewbridge for these contributions!
 
 <!-- Versions -->
 
-[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.4...v1.0.0
 [0.17.4]: https://github.com/fredericbonnet/cmake-test-explorer/compare/v0.17.3...v0.17.4
