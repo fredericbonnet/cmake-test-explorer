@@ -16,10 +16,11 @@
 		"Scott Kyle (https://github.com/appden)",
 		"Philip Craig (https://github.com/philipcraig)",
 		"Elizabeth Lin (https://github.com/elizabethtl)",
-		"Scott Bauer (https://github.com/scottabauer)"
+		"Scott Bauer (https://github.com/scottabauer)",
+		"Ben Jarvis (https://github.com/benjarvis)"
 	],
 	"publisher": "fredericbonnet",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"license": "BSD-3-Clause",
 	"homepage": "https://github.com/fredericbonnet/cmake-test-explorer",
 	"repository": {

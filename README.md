@@ -2,13 +2,12 @@
 
 Run your [CMake] tests using Visual Studio Code's [native Testing UI][vscode-testing].
 
-## What's new in version 1.1.1
+## What's new in version 1.1.2
 
 ### Fixed
 
-- Fix test run/debug for out-of-source builds. This fixes issue
-  [#78](https://github.com/fredericbonnet/cmake-test-explorer/issues/78)
-  (regression).
+- Improve test output performances. This fixes issue
+  [#83](https://github.com/fredericbonnet/cmake-test-explorer/issues/83).
 
 ## Features
 
