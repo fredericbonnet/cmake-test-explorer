@@ -268,6 +268,56 @@ async function runTests(
 }
 
 /**
+ * Utility to buffer test outputs.
+ *
+ * This dramatically improves performances with large test suites, as
+ * TestRun.appendOutput is quite slow.
+ */
+class TestRunOutput {
+	constructor(private run: vscode.TestRun) {}
+	private outputBuffers = new Map<
+		vscode.TestItem,
+		{
+			lines: string[];
+			timer?: NodeJS.Timeout;
+		}
+	>();
+
+	appendLine(testItem: vscode.TestItem, line: string) {
+		let buffer = this.outputBuffers.get(testItem);
+		if (!buffer) {
+			buffer = { lines: [] };
+			this.outputBuffers.set(testItem, buffer);
+		}
+		buffer.lines.push(line);
+		if (!buffer.timer) {
+			buffer.timer = setTimeout(this.flushItem.bind(this), 100, testItem);
+		}
+	}
+	flushItem(testItem: vscode.TestItem) {
+		let buffer = this.outputBuffers.get(testItem);
+		if (!buffer) return;
+		if (buffer.lines.length > 0) {
+			this.run.appendOutput(
+				buffer.lines.join('\r\n'),
+				undefined,
+				testItem
+			);
+			buffer.lines.length = 0;
+		}
+		if (buffer.timer) {
+			clearTimeout(buffer.timer);
+			buffer.timer = undefined;
+		}
+	}
+	flushAll() {
+		for (const testItem of this.outputBuffers.keys()) {
+			this.flushItem(testItem);
+		}
+	}
+}
+
+/**
  * Run tests for root item
  *
  * @param run Test run
@@ -283,23 +333,7 @@ async function runTestsForRoot(
 ) {
 	if (!root.uri) return; // Should never happen
 
-	interface OutputBuffer {
-		lines: string[];
-		timer?: NodeJS.Timeout;
-	}
-	const outputBuffers = new Map<vscode.TestItem, OutputBuffer>();
-
-	const flushOutputBuffer = (testItem: vscode.TestItem, buffer: OutputBuffer) => {
-		if (buffer.lines.length > 0) {
-			run.appendOutput(buffer.lines.join(''), undefined, testItem);
-			buffer.lines.length = 0;
-		}
-		if (buffer.timer) {
-			clearTimeout(buffer.timer);
-			buffer.timer = undefined;
-		}
-	};
-
+	const output = new TestRunOutput(run);
 	try {
 		const rootItemData = rootItemDataMap.get(root);
 		if (!rootItemData) return;
@@ -339,11 +373,8 @@ async function runTestsForRoot(
 
 		// Handle cancellation
 		token.onCancellationRequested(() => {
-			for (const [testItem, buffer] of outputBuffers) {
-				flushOutputBuffer(testItem, buffer);
-			}
-			
 			cancelCmakeTestProcess(testProcess);
+			output.flushAll();
 		});
 
 		// Run tests and collect output
@@ -360,19 +391,7 @@ async function runTestsForRoot(
 				}
 
 				case 'output': {
-
-					let buffer = outputBuffers.get(testItem);
-
-					if (!buffer) {
-						buffer = { lines: [] };
-						outputBuffers.set(testItem, buffer);
-					}
-
-					buffer.lines.push(event.line + '\r\n');
-
-					if (!buffer.timer) {
-						buffer.timer = setTimeout(() => flushOutputBuffer(testItem, buffer), 100);
-					}
+					output.appendLine(testItem, event.line);
 
 					// Parse error patterns
 					if (event.text) {
@@ -402,12 +421,7 @@ async function runTestsForRoot(
 				}
 
 				case 'end': {
-
-					let buffer = outputBuffers.get(testItem);
-
-					if (buffer) {
-						flushOutputBuffer(testItem, buffer);
-					}
+					output.flushItem(testItem);
 
 					const testDecorations = decorations.get(event.index) || [];
 
@@ -438,20 +452,7 @@ async function runTestsForRoot(
 				}
 			}
 		});
-
-		// Flush any remaining output buffers
-		for (const [testItem, buffer] of outputBuffers) {
-			flushOutputBuffer(testItem, buffer);
-		}
 	} catch (e) {
-		// Clear all pending timers and flush remaining output
-		for (const [testItem, buffer] of outputBuffers) {
-			if (buffer.timer) {
-				clearTimeout(buffer.timer);
-			}
-			flushOutputBuffer(testItem, buffer);
-		}
-		
 		// Mark all tests as errored
 		const errorMessage = new vscode.TestMessage(`${e}`);
 		if (testsToRun) {
@@ -464,6 +465,8 @@ async function runTestsForRoot(
 				run.errored(test, [errorMessage]);
 			}
 		}
+	} finally {
+		output.flushAll();
 	}
 }
 
