@@ -283,6 +283,23 @@ async function runTestsForRoot(
 ) {
 	if (!root.uri) return; // Should never happen
 
+	interface OutputBuffer {
+		lines: string[];
+		timer?: NodeJS.Timeout;
+	}
+	const outputBuffers = new Map<vscode.TestItem, OutputBuffer>();
+
+	const flushOutputBuffer = (testItem: vscode.TestItem, buffer: OutputBuffer) => {
+		if (buffer.lines.length > 0) {
+			run.appendOutput(buffer.lines.join(''), undefined, testItem);
+			buffer.lines.length = 0;
+		}
+		if (buffer.timer) {
+			clearTimeout(buffer.timer);
+			buffer.timer = undefined;
+		}
+	};
+
 	try {
 		const rootItemData = rootItemDataMap.get(root);
 		if (!rootItemData) return;
@@ -322,6 +339,10 @@ async function runTestsForRoot(
 
 		// Handle cancellation
 		token.onCancellationRequested(() => {
+			for (const [testItem, buffer] of outputBuffers) {
+				flushOutputBuffer(testItem, buffer);
+			}
+			
 			cancelCmakeTestProcess(testProcess);
 		});
 
@@ -331,6 +352,7 @@ async function runTestsForRoot(
 		await executeCmakeTestProcess(testProcess, (event: CmakeTestEvent) => {
 			const testItem = indexToItem.get(event.index);
 			if (!testItem) return;
+
 			switch (event.type) {
 				case 'start': {
 					run.started(testItem);
@@ -338,7 +360,19 @@ async function runTestsForRoot(
 				}
 
 				case 'output': {
-					run.appendOutput(event.line + '\r\n', undefined, testItem);
+
+					let buffer = outputBuffers.get(testItem);
+
+					if (!buffer) {
+						buffer = { lines: [] };
+						outputBuffers.set(testItem, buffer);
+					}
+
+					buffer.lines.push(event.line + '\r\n');
+
+					if (!buffer.timer) {
+						buffer.timer = setTimeout(() => flushOutputBuffer(testItem, buffer), 100);
+					}
 
 					// Parse error patterns
 					if (event.text) {
@@ -368,6 +402,13 @@ async function runTestsForRoot(
 				}
 
 				case 'end': {
+
+					let buffer = outputBuffers.get(testItem);
+
+					if (buffer) {
+						flushOutputBuffer(testItem, buffer);
+					}
+
 					const testDecorations = decorations.get(event.index) || [];
 
 					// Update test state
@@ -397,7 +438,20 @@ async function runTestsForRoot(
 				}
 			}
 		});
+
+		// Flush any remaining output buffers
+		for (const [testItem, buffer] of outputBuffers) {
+			flushOutputBuffer(testItem, buffer);
+		}
 	} catch (e) {
+		// Clear all pending timers and flush remaining output
+		for (const [testItem, buffer] of outputBuffers) {
+			if (buffer.timer) {
+				clearTimeout(buffer.timer);
+			}
+			flushOutputBuffer(testItem, buffer);
+		}
+		
 		// Mark all tests as errored
 		const errorMessage = new vscode.TestMessage(`${e}`);
 		if (testsToRun) {
